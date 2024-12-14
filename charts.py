@@ -1,149 +1,160 @@
 import pandas as pd
 import numpy as np
 import mplfinance as mpf
-from io import BytesIO
 import matplotlib.pyplot as plt
-import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
+import os
 import settings
 
 async def fetch_candle_data(token_type):
-    """Fetch price data from DexScreener pair endpoint"""
+    """Fetch price data and create 48 hours of 1-hour candles"""
     try:
-        # Get the appropriate API URL based on token type
         url = settings.TETSUO['dex_api'] if token_type == 'tetsuo' else settings.SOL['dex_api']
         print(f"Fetching data from: {url}")
         
         response = requests.get(url, timeout=10)
         data = response.json()
         
-        # Extract price data based on token type
+        # Extract price data
         if token_type == 'tetsuo':
-            if data and 'pairs' in data and len(data['pairs']) > 0:
-                pair_data = data['pairs'][0]
-            else:
-                print("No pair data found for TETSUO")
-                return None
-        else:  # sol
-            if data and 'pair' in data:
-                pair_data = data['pair']
-            else:
-                print("No pair data found for SOL")
-                return None
+            pair_data = data['pairs'][0] if data and 'pairs' in data and data['pairs'] else None
+        else:
+            pair_data = data.get('pair')
+            
+        if not pair_data:
+            print(f"No pair data found for {token_type.upper()}")
+            return None
 
-        # Extract price history data
-        if 'priceUsd' in pair_data:
-            current_price = float(pair_data['priceUsd'])
-            current_time = datetime.now()
-
-            # Create synthetic OHLC data for the last hour
-            price_change = float(pair_data.get('priceChange', {}).get('h1', 0) or 0)  # Default to 0 if None
-            start_price = current_price / (1 + price_change/100) if price_change != -100 else current_price
-
-            # Generate time series
-            dates = pd.date_range(end=current_time, periods=60, freq='1min')
-            
-            # Create base prices with small random variations
-            variations = np.random.normal(0, 0.001, 60)
-            base_prices = np.linspace(start_price, current_price, 60)
-            
-            # Calculate OHLC data
-            opens = base_prices * (1 + variations)
-            closes = np.roll(base_prices, -1) * (1 + variations)
-            closes[-1] = current_price  # Make sure last close is current price
-            
-            # High should be highest of open/close plus small variation
-            highs = np.maximum(opens, closes) * (1 + abs(np.random.normal(0, 0.001, 60)))
-            
-            # Low should be lowest of open/close minus small variation
-            lows = np.minimum(opens, closes) * (1 - abs(np.random.normal(0, 0.001, 60)))
-            
-            # Ensure high is always highest and low is always lowest
-            highs = np.maximum(highs, np.maximum(opens, closes))
-            lows = np.minimum(lows, np.minimum(opens, closes))
-            
-            # Create volume data
-            base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24 / 60
-            volumes = np.random.normal(base_volume, base_volume * 0.1, 60)
-            volumes = np.maximum(volumes, 0)  # Ensure no negative volumes
-            
-            # Create DataFrame
-            df = pd.DataFrame({
-                'Open': opens,
-                'High': highs,
-                'Low': lows,
-                'Close': closes,
-                'Volume': volumes
-            }, index=dates)
-            
-            # Ensure no NaN values
-            df = df.fillna(method='ffill').fillna(method='bfill')
-            
-            # Ensure proper ordering of OHLC values
-            df['High'] = df[['Open', 'High', 'Close']].max(axis=1)
-            df['Low'] = df[['Open', 'Low', 'Close']].min(axis=1)
-            
-            print(f"Created DataFrame with {len(df)} time periods")
-            print("Sample of data:")
-            print(df.head())
-            print("\nChecking for NaN values:", df.isna().sum())
-            
-            return df
-            
-        print("No price data found in response")
-        return None
+        # Get current price and create time series
+        current_price = float(pair_data['priceUsd'])
+        end_time = datetime.now()
+        start_time = end_time - timedelta(hours=48)  # Get exactly 48 hours
+        
+        # Create datetime range with 1-hour intervals
+        dates = pd.date_range(start=start_time, end=end_time, freq='1H')
+        
+        # Get price changes
+        price_changes = pair_data.get('priceChange', {})
+        h24_change = float(price_changes.get('h24', 0) or 0)
+        
+        # Calculate starting price based on 24h change
+        start_price = current_price / (1 + h24_change/100) if h24_change != -100 else current_price
+        
+        # Generate price trend
+        num_periods = len(dates)
+        price_trend = np.zeros(num_periods)
+        price_trend[0] = start_price
+        
+        # Create price movements
+        volatility = 0.015  # Adjusted for 1-hour periods
+        for i in range(1, num_periods):
+            # Random walk with drift towards current price
+            change = np.random.normal(0, volatility)
+            trend_factor = 0.02 * (current_price - price_trend[i-1]) / current_price
+            price_trend[i] = price_trend[i-1] * (1 + change + trend_factor)
+        
+        # Ensure last price matches current price
+        price_trend[-1] = current_price
+        
+        # Generate OHLC data
+        opens = price_trend.copy()
+        closes = np.roll(price_trend, -1)
+        closes[-1] = current_price
+        
+        # Calculate highs and lows
+        highs = np.maximum(opens, closes) * (1 + np.random.uniform(0.001, 0.002, num_periods))
+        lows = np.minimum(opens, closes) * (1 - np.random.uniform(0.001, 0.002, num_periods))
+        
+        # Generate hourly volume data
+        base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24
+        volumes = np.random.normal(base_volume, base_volume * 0.2, num_periods)
+        volumes = np.maximum(volumes, 0)  # Ensure no negative volumes
+        
+        # Create DataFrame
+        df = pd.DataFrame({
+            'Open': opens,
+            'High': highs,
+            'Low': lows,
+            'Close': closes,
+            'Volume': volumes
+        }, index=dates)
+        
+        # Ensure OHLC relationships are maintained
+        df['High'] = df[['Open', 'High', 'Close']].max(axis=1)
+        df['Low'] = df[['Open', 'Low', 'Close']].min(axis=1)
+        
+        print(f"Created DataFrame with {len(df)} hourly candles over 48 hours")
+        return df
         
     except Exception as e:
         print(f"Error fetching price data: {str(e)}")
         return None
 
 async def generate_chart(df, token_type):
-    """Generate chart using mplfinance"""
+    """Generate chart using mplfinance with DexScreener-like styling"""
     try:
-        # Create custom style
         mc = mpf.make_marketcolors(
-            up=settings.CHART_COLORS['up_candle'],
-            down=settings.CHART_COLORS['down_candle'],
+            up='#26a69a',      # Green
+            down='#ef5350',    # Red
             edge='inherit',
             wick='inherit',
-            volume={'up': settings.CHART_COLORS['up_candle'], 
-                   'down': settings.CHART_COLORS['down_candle']},
+            volume={'up': '#26a69a', 'down': '#ef5350'}
         )
 
         s = mpf.make_mpf_style(
+            base_mpf_style='charles',
             marketcolors=mc,
-            gridstyle='solid',
-            gridcolor=settings.CHART_COLORS['grid'],
-            facecolor=settings.CHART_COLORS['background'],
-            figcolor=settings.CHART_COLORS['background'],
-            rc={'axes.labelcolor': 'white',
-                'axes.edgecolor': 'white',
-                'xtick.color': 'white',
-                'ytick.color': 'white'}
+            gridstyle='dotted',
+            gridcolor='#192734',
+            facecolor='#0B1217',
+            figcolor='#0B1217',
+            rc={
+                'axes.labelcolor': '#A7B1B7',
+                'axes.edgecolor': '#192734',
+                'xtick.color': '#A7B1B7',
+                'ytick.color': '#A7B1B7'
+            }
         )
 
         # Create figure
-        fig, _ = mpf.plot(
+        fig, axlist = mpf.plot(
             df,
             type='candle',
             volume=True,
             style=s,
-            title=f'\n{"TETSUO" if token_type == "tetsuo" else "Solana"} Price Chart (Last Hour)',
             ylabel='Price (USD)',
             ylabel_lower='Volume',
             returnfig=True,
-            figsize=(12, 8),
+            figsize=(12, 7),
             panel_ratios=(3, 1),
-            tight_layout=True
+            tight_layout=True,
+            xrotation=0,
+            datetime_format='%m-%d %H:%M',  # Format x-axis to show date and hour
+            show_nontrading=True
         )
 
+        # Additional formatting
+        ax_main = axlist[0]
+        ax_volume = axlist[2]
+        
+        # Format axes
+        ax_main.yaxis.set_label_position('right')
+        ax_main.yaxis.tick_right()
+        ax_volume.yaxis.set_label_position('right')
+        ax_volume.yaxis.tick_right()
+        
         # Save to file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{settings.SCREENSHOT_DIR}/chart_{timestamp}.png"
         os.makedirs(settings.SCREENSHOT_DIR, exist_ok=True)
         
-        fig.savefig(filename, dpi=100, bbox_inches='tight', facecolor=settings.CHART_COLORS['background'])
+        fig.savefig(filename, 
+                   dpi=100, 
+                   bbox_inches='tight', 
+                   facecolor='#0B1217',
+                   edgecolor='none',
+                   pad_inches=0.5)
         plt.close(fig)
         
         return filename
