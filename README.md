@@ -1,6 +1,14 @@
 # PriceBot-2.0
-Price bot for discord made in python
+* Price bot for discord made in python.
+* Bot updates price every 5mins (300seconds)
+* Bot shows price on nickname, if you adjust the speed of the updates be aware of discord rules as they may ban your bot if you are too aggressive.
+* Status Green or Red shows the direction of the coin based on the 24 hour % of the coin
+* An up or down arrow is included to show direction based on the percentage
 
+# Bot Commands
+* !price - returns base token based on dexscreener entries located at the top of bot.py (Currently renamed to Tetsuo in the release)
+* !sol - returns sol price
+Development * !chart - Need to add a basic chart grab to display the 1hr chart for selected coins
 
 # Update package list
 sudo apt update
