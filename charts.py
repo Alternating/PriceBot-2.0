@@ -29,7 +29,7 @@ async def fetch_candle_data(token_type):
         # Get current price and create time series
         current_price = float(pair_data['priceUsd'])
         end_time = datetime.now()
-        start_time = end_time - timedelta(hours=48)  # Get exactly 48 hours
+        start_time = end_time - timedelta(hours=360)  # Get exactly 360 hours
         
         # Create datetime range with 1-hour intervals
         dates = pd.date_range(start=start_time, end=end_time, freq='1H')
