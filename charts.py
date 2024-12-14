@@ -10,12 +10,14 @@ import settings
 async def fetch_candle_data(token_type):
     """Fetch candlestick data from DexScreener"""
     try:
-        # Get pair address based on token type
-        pair_address = settings.TETSUO['pair_address'] if token_type == 'tetsuo' else settings.SOL['pair_address']
+        if token_type == 'tetsuo':
+            # Format: chainId/pairAddress
+            url = f"https://api.dexscreener.com/latest/dex/candles/solana/{settings.TETSUO['pair_address']}"
+        else:  # sol
+            # For SOL we use a different endpoint format
+            url = f"https://api.dexscreener.com/latest/dex/candles/solana/SOL"
         
-        # DexScreener candles endpoint
-        url = f"https://api.dexscreener.com/latest/dex/candles/solana/{pair_address}?from=1h"
-        
+        print(f"Fetching candles from: {url}")  # Debug print
         response = requests.get(url)
         data = response.json()
         
@@ -38,6 +40,9 @@ async def fetch_candle_data(token_type):
             
             # Set index to Date
             df.set_index('Date', inplace=True)
+            
+            # Sort index to ensure chronological order
+            df = df.sort_index()
             
             return df
         

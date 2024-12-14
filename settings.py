@@ -9,47 +9,25 @@ CHART_COOLDOWN = 300
 TETSUO = {
     'address': '8i51XNNpGaKaj4G4nDdmQh95v4FKAxw8mhtaRoKd9tE8',
     'dex_api': 'https://api.dexscreener.com/latest/dex/tokens/8i51XNNpGaKaj4G4nDdmQh95v4FKAxw8mhtaRoKd9tE8',
-    'chart_url': 'https://dexscreener.com/solana/8i51XNNpGaKaj4G4nDdmQh95v4FKAxw8mhtaRoKd9tE8'
+    'pair_address': '6MXwJvp4U46YK7aM6pzMX7YYCyPx4dTaDXTnkjDXR35i'  # Raydium pair address
 }
 
 SOL = {
     'address': 'sol',
     'dex_api': 'https://api.dexscreener.com/latest/dex/pairs/osmosis/1960',
-    'chart_url': 'https://dexscreener.com/solana/sol'
+    'pair_address': 'SOL'  # Special case for SOL
+}
+
+# Chart settings
+CHART_COLORS = {
+    'up_candle': '#26a69a',    # Green for up candles
+    'down_candle': '#ef5350',  # Red for down candles
+    'edge_color': '#131722',   # Dark background color
+    'background': '#131722',   # Dark background
+    'grid': '#363c4e',        # Grid color
+    'volume_up': '#26a69a',    # Volume colors
+    'volume_down': '#ef5350'
 }
 
 # Screenshot settings
 SCREENSHOT_DIR = 'screenshots'
-VIEWPORT_SETTINGS = {
-    'width': 1280,
-    'height': 800
-}
-
-# Chart selectors for web scraping
-CHART_SELECTORS = [
-    '.tv-lightweight-charts',
-    '#chart-container',
-    '[data-qa="chart"]',
-    '.tradingview-chart',
-    '.chart-container'
-]
-
-TIMEFRAME_SELECTORS = [
-    'button:has-text("1h")',
-    '[data-qa="time-resolution-button"]:has-text("1h")',
-    'button[data-resolution="60"]',
-    'button.resolution-button:has-text("1h")'
-]
-
-# Browser launch arguments
-BROWSER_ARGS = [
-    '--disable-gpu',
-    '--no-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-setuid-sandbox',
-    '--no-first-run',
-    '--no-zygote',
-    '--deterministic-fetch',
-    '--disable-features=IsolateOrigins',
-    '--disable-site-isolation-trials'
-]
