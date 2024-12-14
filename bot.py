@@ -1,4 +1,4 @@
-# By Alternating 2024
+# By Alternating
 import discord
 from discord.ext import tasks, commands
 import requests
@@ -14,7 +14,7 @@ class PriceBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix='!', intents=intents)
         
-        # Initialize command cooldowns
+# Initialize command cooldowns
         self.command_cooldowns = {}
         
     async def setup_hook(self):
@@ -29,7 +29,7 @@ class PriceBot(commands.Bot):
     async def update_price(self):
         """Update bot's nickname with current price"""
         try:
-            # Fetch TETSUO price data
+# Fetch TETSUO price data
             response = requests.get(settings.TETSUO['dex_api'])
             data = response.json()
             
@@ -38,11 +38,11 @@ class PriceBot(commands.Bot):
                 price = float(pair['priceUsd'])
                 price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
                 
-                # Format nickname with arrow
+# Format nickname with arrow
                 arrow = "↗" if price_change >= 0 else "↘"
                 new_name = f"{arrow} ${price:.4f}"
                 
-                # Update bot's nickname in all guilds
+# Update bot's nickname in all guilds
                 for guild in self.guilds:
                     try:
                         await guild.me.edit(nick=new_name)
@@ -50,7 +50,7 @@ class PriceBot(commands.Bot):
                     except discord.errors.Forbidden:
                         print(f'Missing permissions to change nickname in {guild.name}')
                 
-                # Update bot's status based on price change
+# Update bot's status based on price change
                 status = discord.Status.online if price_change >= 0 else discord.Status.dnd
                 activity = discord.CustomActivity(name=f"24hr| {price_change:+.2f}%")
                 await self.change_presence(status=status, activity=activity)
@@ -81,6 +81,8 @@ class PriceCommands(commands.Cog):
         self.bot.command_cooldowns[cooldown_key] = current_time
         return True
 
+# command for price check tetsuo
+
     @commands.command(name='tetsuo')
     async def tetsuo_price(self, ctx):
         """Display current TETSUO price information"""
@@ -97,7 +99,7 @@ class PriceCommands(commands.Cog):
                 price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
                 market_cap = float(pair['fdv']) if 'fdv' in pair else None
                 
-                # Create embed
+# Create embed for tetsuo price - displays in discord
                 color = 0x00ff00 if price_change >= 0 else 0xff0000
                 arrow = "↑" if price_change >= 0 else "↓"
                 
@@ -135,6 +137,64 @@ class PriceCommands(commands.Cog):
             print(f"Error in tetsuo_price: {str(e)}")
             await ctx.send("❌ Error fetching price data")
 
+# command to display sol price data - displays in discord
+
+    @commands.command(name='sol')
+    async def sol_price(self, ctx):
+        """Display current SOL price information"""
+        if not await self.check_cooldown(ctx, 'sol'):
+            return
+            
+        try:
+            response = requests.get(settings.SOL['dex_api'])
+            data = response.json()
+            
+            if data and 'pair' in data:
+                pair = data['pair']
+                price = float(pair['priceUsd'])
+                price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
+                market_cap = float(pair['fdv']) if 'fdv' in pair else None
+                
+                # Create embed
+                color = 0x00ff00 if price_change >= 0 else 0xff0000
+                arrow = "↑" if price_change >= 0 else "↓"
+                
+                embed = discord.Embed(
+                    title="Solana Price Information",
+                    color=color,
+                    timestamp=datetime.now()
+                )
+                
+                embed.add_field(
+                    name="Current Price",
+                    value=f"{arrow} ${price:.4f}",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="24h Change",
+                    value=f"{price_change:+.2f}%",
+                    inline=True
+                )
+                
+                if market_cap:
+                    market_cap_formatted = f"${market_cap/1_000_000:.2f}M"
+                    embed.add_field(
+                        name="Market Cap",
+                        value=market_cap_formatted,
+                        inline=True
+                    )
+                
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send("❌ Unable to fetch SOL price data")
+                
+        except Exception as e:
+            print(f"Error in sol_price: {str(e)}")
+            await ctx.send("❌ Error fetching SOL price data")
+
+# command for chart calls on chart.py - displays chart in discord
+            
     @commands.command(name='chart')
     async def chart_command(self, ctx, token_type: str = None):
         """Display price chart for TETSUO or SOL"""
