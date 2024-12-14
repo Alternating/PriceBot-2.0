@@ -29,7 +29,7 @@ async def fetch_candle_data(token_type):
         # Get current price and create time series
         current_price = float(pair_data['priceUsd'])
         end_time = datetime.now()
-        start_time = end_time - timedelta(hours=360)  # Get exactly 360 hours
+        start_time = end_time - timedelta(hours=360)  # Get 360 hours
         
         # Create datetime range with 1-hour intervals
         dates = pd.date_range(start=start_time, end=end_time, freq='1H')
@@ -47,7 +47,7 @@ async def fetch_candle_data(token_type):
         price_trend[0] = start_price
         
         # Create price movements
-        volatility = 0.015  # Adjusted for 1-hour periods
+        volatility = 0.015
         for i in range(1, num_periods):
             # Random walk with drift towards current price
             change = np.random.normal(0, volatility)
@@ -128,13 +128,13 @@ async def generate_chart(df, token_type):
             returnfig=True,
             figsize=(12, 7),
             panel_ratios=(3, 1),
-            tight_layout=True,
+            tight_layout=False,  # Changed to False to accommodate title
             xrotation=0,
-            datetime_format='%m-%d %H:%M',  # Format x-axis to show date and hour
+            datetime_format='%m-%d %H:%M',
             show_nontrading=True
         )
 
-        # Additional formatting
+        # Get the main price axis
         ax_main = axlist[0]
         ax_volume = axlist[2]
         
@@ -143,6 +143,18 @@ async def generate_chart(df, token_type):
         ax_main.yaxis.tick_right()
         ax_volume.yaxis.set_label_position('right')
         ax_volume.yaxis.tick_right()
+
+        # Add pair name in upper left corner
+        pair_name = f"{token_type.upper()}/{'SOL' if token_type == 'tetsuo' else 'USD'}"
+        ax_main.text(0.02, 0.98, pair_name,
+                    transform=ax_main.transAxes,
+                    color='white',
+                    fontweight='bold',
+                    fontsize=12,
+                    verticalalignment='top')
+        
+        # Adjust layout
+        plt.subplots_adjust(left=0.05, right=0.95, top=0.95)
         
         # Save to file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
