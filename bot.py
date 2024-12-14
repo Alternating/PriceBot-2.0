@@ -1,4 +1,3 @@
-# By alternating update
 import discord
 from discord.ext import tasks, commands
 import requests
@@ -7,6 +6,23 @@ import os
 from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 import time
+import settings
+
+class PriceBot(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        super().__init__(command_prefix='!', intents=intents)
+        
+        self.token = settings.BOT_TOKEN
+        self.token_api_url = settings.TETSUO['dex_api']
+        self.sol_api_url = settings.SOL['dex_api']
+        self.tetsuo_address = settings.TETSUO['address']
+        self.last_price_command = {}
+        self.last_sol_command = {}
+        self.last_chart_command = {}
+        self.price_cooldown = settings.PRICE_COOLDOWN
+        self.chart_cooldown = settings.CHART_COOLDOWN
 
 class PriceBot(commands.Bot):
     def __init__(self):
@@ -129,24 +145,81 @@ class PriceCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def check_cooldown(self, ctx, command_type='price'):
-        current_time = datetime.now()
-        channel_id = ctx.channel.id
-        
-        command_dict = {
-            'price': self.bot.last_price_command,
-            'sol': self.bot.last_sol_command,
-            'chart': self.bot.last_chart_command
-        }.get(command_type)
-        
-        if channel_id in command_dict:
-            time_diff = (current_time - command_dict[channel_id]).total_seconds()
-            cooldown = self.bot.chart_cooldown if command_type == 'chart' else self.bot.price_cooldown
-            if time_diff < cooldown:
-                remaining_time = int(cooldown - time_diff)
-                await ctx.send(f'⏳ This command is on cooldown. Please wait {remaining_time} seconds before trying again.')
-                return False
-        return True
+    async def capture_dexscreener_chart(self, token_address):
+        """Captures a screenshot of a DexScreener chart using headless browser mode."""
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=settings.BROWSER_ARGS
+            )
+            
+            context = await browser.new_context(
+                viewport=settings.VIEWPORT_SETTINGS,
+                color_scheme='dark'
+            )
+            
+            page = await context.new_page()
+            
+            try:
+                url = f"https://dexscreener.com/solana/{token_address}"
+                
+                await page.goto(url, wait_until='networkidle', timeout=60000)
+                await page.wait_for_selector('[data-price]', timeout=60000)
+                
+                chart_element = None
+                for selector in settings.CHART_SELECTORS:
+                    try:
+                        chart_element = await page.wait_for_selector(selector, timeout=5000, state='visible')
+                        if chart_element:
+                            print(f"Found chart with selector: {selector}")
+                            break
+                    except Exception:
+                        continue
+                
+                if not chart_element:
+                    raise Exception("Could not find chart element with any known selector")
+                
+                await asyncio.sleep(5)
+                
+                for selector in settings.TIMEFRAME_SELECTORS:
+                    try:
+                        button = await page.wait_for_selector(selector, timeout=5000)
+                        if button:
+                            await button.click()
+                            print(f"Clicked timeframe button with selector: {selector}")
+                            break
+                    except Exception:
+                        continue
+                
+                await asyncio.sleep(3)
+                
+                os.makedirs(settings.SCREENSHOT_DIR, exist_ok=True)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{settings.SCREENSHOT_DIR}/dexscreener_chart_{timestamp}.png"
+                
+                await page.screenshot(path=filename)
+                
+                chart_box = await chart_element.bounding_box()
+                if chart_box:
+                    chart_box['x'] = max(0, chart_box['x'] - 10)
+                    chart_box['y'] = max(0, chart_box['y'] - 10)
+                    chart_box['width'] += 20
+                    chart_box['height'] += 20
+                    
+                    await page.screenshot(
+                        path=filename,
+                        clip=chart_box
+                    )
+                
+                return filename
+                
+            except Exception as e:
+                print(f"Detailed error during screenshot capture: {str(e)}")
+                raise
+                
+            finally:
+                await context.close()
+                await browser.close()
 
     async def capture_dexscreener_chart(self, token_address):
         """Captures a screenshot of a DexScreener chart using headless browser mode."""
