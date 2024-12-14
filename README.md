@@ -6,10 +6,10 @@
 * An up or down arrow is included to show direction based on the percentage
 
 # Bot Commands
-* !price - returns base token based on dexscreener entries located at the top of bot.py (Currently renamed to Tetsuo in the release)
-* !sol - returns sol price
-
-* Development * !chart - Need to add a basic chart grab to display the 1hr chart for selected coins
+* !tetsuo          - Show current TETSUO price information - 60 second cooldown
+* !sol             - Show current Solana price information - 60 second cooldown
+* !chart tetsuo    - Show TETSUO price chart - 15 second cooldown
+* !chart sol       - Show Solana price chart - 15 second cooldown
 
 # Update package list
 sudo apt update
