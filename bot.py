@@ -14,7 +14,7 @@ class PriceBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix='!', intents=intents)
         
-        self.token = 'MTMxNzMwMjAwOTYwMjM3NTc1Mw.GBZK2G.397HncPXupiMUW_zw1saiIEA6ewntiVx5qaz8Y'  # Replace with your bot token
+        self.token = 'YOUR_TOKEN_HERE'  # Replace with your bot token
         self.token_api_url = 'https://api.dexscreener.com/latest/dex/tokens/8i51XNNpGaKaj4G4nDdmQh95v4FKAxw8mhtaRoKd9tE8'
         self.sol_api_url = 'https://api.dexscreener.com/latest/dex/pairs/osmosis/1960'
         self.tetsuo_address = '8i51XNNpGaKaj4G4nDdmQh95v4FKAxw8mhtaRoKd9tE8'
