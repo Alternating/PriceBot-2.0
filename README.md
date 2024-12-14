@@ -19,6 +19,12 @@ sudo apt upgrade -y
 sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
 sudo apt install python3.8 python3.8-venv python3.8-dev screen -y
+sudo apt-get install python3-dev build-essential
+python -m pip install --upgrade pip
+pip install wheel setuptools
+pip install contourpy
+pip install matplotlib
+pip install mplfinance
 
 # Create project directory
 mkdir discord_price_bot
