@@ -16,12 +16,6 @@ async def fetch_candle_data(token_type):
         print(f"Fetching data from: {url}")
         
         response = requests.get(url, timeout=10)
-        
-        if response.status_code != 200:
-            print(f"API returned status code: {response.status_code}")
-            print(f"Response content: {response.text[:200]}")
-            return None
-            
         data = response.json()
         
         # Extract price data based on token type
@@ -44,39 +38,62 @@ async def fetch_candle_data(token_type):
             current_time = datetime.now()
 
             # Create synthetic OHLC data for the last hour
-            price_change = float(pair_data.get('priceChange', {}).get('h1', 0))
-            start_price = current_price / (1 + price_change/100)
+            price_change = float(pair_data.get('priceChange', {}).get('h1', 0) or 0)  # Default to 0 if None
+            start_price = current_price / (1 + price_change/100) if price_change != -100 else current_price
 
-            # Create a DataFrame with synthetic price data
+            # Generate time series
+            dates = pd.date_range(end=current_time, periods=60, freq='1min')
+            
+            # Create base prices with small random variations
+            variations = np.random.normal(0, 0.001, 60)
+            base_prices = np.linspace(start_price, current_price, 60)
+            
+            # Calculate OHLC data
+            opens = base_prices * (1 + variations)
+            closes = np.roll(base_prices, -1) * (1 + variations)
+            closes[-1] = current_price  # Make sure last close is current price
+            
+            # High should be highest of open/close plus small variation
+            highs = np.maximum(opens, closes) * (1 + abs(np.random.normal(0, 0.001, 60)))
+            
+            # Low should be lowest of open/close minus small variation
+            lows = np.minimum(opens, closes) * (1 - abs(np.random.normal(0, 0.001, 60)))
+            
+            # Ensure high is always highest and low is always lowest
+            highs = np.maximum(highs, np.maximum(opens, closes))
+            lows = np.minimum(lows, np.minimum(opens, closes))
+            
+            # Create volume data
+            base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24 / 60
+            volumes = np.random.normal(base_volume, base_volume * 0.1, 60)
+            volumes = np.maximum(volumes, 0)  # Ensure no negative volumes
+            
+            # Create DataFrame
             df = pd.DataFrame({
-                'Date': pd.date_range(end=current_time, periods=60, freq='1min'),
-                'Open': [start_price] * 60,
-                'High': [max(start_price, current_price)] * 60,
-                'Low': [min(start_price, current_price)] * 60,
-                'Close': [current_price] * 60,
-                'Volume': [float(pair_data.get('volume', {}).get('h24', 0))/24/60] * 60
-            })
-
-            df.set_index('Date', inplace=True)
-
-            # Add some variation to make the chart look more natural
-            df['Open'] = df['Open'] * (1 + pd.Series(np.random.normal(0, 0.001, 60)))
-            df['High'] = df[['Open', 'Close']].max(axis=1) * (1 + abs(pd.Series(np.random.normal(0, 0.001, 60))))
-            df['Low'] = df[['Open', 'Close']].min(axis=1) * (1 - abs(pd.Series(np.random.normal(0, 0.001, 60))))
-
+                'Open': opens,
+                'High': highs,
+                'Low': lows,
+                'Close': closes,
+                'Volume': volumes
+            }, index=dates)
+            
+            # Ensure no NaN values
+            df = df.fillna(method='ffill').fillna(method='bfill')
+            
+            # Ensure proper ordering of OHLC values
+            df['High'] = df[['Open', 'High', 'Close']].max(axis=1)
+            df['Low'] = df[['Open', 'Low', 'Close']].min(axis=1)
+            
             print(f"Created DataFrame with {len(df)} time periods")
+            print("Sample of data:")
+            print(df.head())
+            print("\nChecking for NaN values:", df.isna().sum())
+            
             return df
             
         print("No price data found in response")
         return None
         
-    except requests.exceptions.RequestException as e:
-        print(f"Request error: {str(e)}")
-        return None
-    except ValueError as e:
-        print(f"JSON decoding error: {str(e)}")
-        print(f"Raw response: {response.text[:200]}")
-        return None
     except Exception as e:
         print(f"Error fetching price data: {str(e)}")
         return None
@@ -88,8 +105,8 @@ async def generate_chart(df, token_type):
         mc = mpf.make_marketcolors(
             up=settings.CHART_COLORS['up_candle'],
             down=settings.CHART_COLORS['down_candle'],
-            edge='inherit',  # Use the same color as the candle
-            wick='inherit',  # Use the same color as the candle
+            edge='inherit',
+            wick='inherit',
             volume={'up': settings.CHART_COLORS['up_candle'], 
                    'down': settings.CHART_COLORS['down_candle']},
         )
@@ -138,15 +155,11 @@ async def generate_chart(df, token_type):
 async def create_price_chart(token_type):
     """Main function to create price chart"""
     try:
-        # Fetch price data
         df = await fetch_candle_data(token_type)
-        
         if df is None:
             return None
             
-        # Generate chart
         chart_path = await generate_chart(df, token_type)
-        
         return chart_path
         
     except Exception as e:
