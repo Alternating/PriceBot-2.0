@@ -7,89 +7,7 @@ import requests
 import os
 import settings
 
-async def fetch_candle_data(token_type):
-    """Fetch price data and create 360 hours of 1-hour candles"""
-    try:
-        url = settings.TETSUO['dex_api'] if token_type == 'tetsuo' else settings.SOL['dex_api']
-        print(f"Fetching data from: {url}")
-        
-        response = requests.get(url, timeout=10)
-        data = response.json()
-        
-        # Extract price data
-        if token_type == 'tetsuo':
-            pair_data = data['pairs'][0] if data and 'pairs' in data and data['pairs'] else None
-        else:
-            pair_data = data.get('pair')
-            
-        if not pair_data:
-            print(f"No pair data found for {token_type.upper()}")
-            return None
-
-        # Get current price and create time series
-        current_price = float(pair_data['priceUsd'])
-        end_time = datetime.now()
-        start_time = end_time - timedelta(hours=360)  # Get 360 hours
-        
-        # Create datetime range with 1-hour intervals
-        dates = pd.date_range(start=start_time, end=end_time, freq='1H')
-        
-        # Get price changes
-        price_changes = pair_data.get('priceChange', {})
-        h24_change = float(price_changes.get('h24', 0) or 0)
-        
-        # Calculate starting price based on 24h change
-        start_price = current_price / (1 + h24_change/100) if h24_change != -100 else current_price
-        
-        # Generate price trend
-        num_periods = len(dates)
-        price_trend = np.zeros(num_periods)
-        price_trend[0] = start_price
-        
-        # Create price movements
-        volatility = 0.015
-        for i in range(1, num_periods):
-            # Random walk with drift towards current price
-            change = np.random.normal(0, volatility)
-            trend_factor = 0.02 * (current_price - price_trend[i-1]) / current_price
-            price_trend[i] = price_trend[i-1] * (1 + change + trend_factor)
-        
-        # Ensure last price matches current price
-        price_trend[-1] = current_price
-        
-        # Generate OHLC data
-        opens = price_trend.copy()
-        closes = np.roll(price_trend, -1)
-        closes[-1] = current_price
-        
-        # Calculate highs and lows
-        highs = np.maximum(opens, closes) * (1 + np.random.uniform(0.001, 0.002, num_periods))
-        lows = np.minimum(opens, closes) * (1 - np.random.uniform(0.001, 0.002, num_periods))
-        
-        # Generate hourly volume data
-        base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24
-        volumes = np.random.normal(base_volume, base_volume * 0.2, num_periods)
-        volumes = np.maximum(volumes, 0)  # Ensure no negative volumes
-        
-        # Create DataFrame
-        df = pd.DataFrame({
-            'Open': opens,
-            'High': highs,
-            'Low': lows,
-            'Close': closes,
-            'Volume': volumes
-        }, index=dates)
-        
-        # Ensure OHLC relationships are maintained
-        df['High'] = df[['Open', 'High', 'Close']].max(axis=1)
-        df['Low'] = df[['Open', 'Low', 'Close']].min(axis=1)
-        
-        print(f"Created DataFrame with {len(df)} hourly candles over 360 hours")
-        return df
-        
-    except Exception as e:
-        print(f"Error fetching price data: {str(e)}")
-        return None
+# ... [Previous functions remain the same until generate_chart] ...
 
 async def generate_chart(df, token_type):
     """Generate chart using mplfinance with DexScreener-like styling"""
@@ -128,7 +46,7 @@ async def generate_chart(df, token_type):
             returnfig=True,
             figsize=(12, 7),
             panel_ratios=(3, 1),
-            tight_layout=False,  # Changed to False to accommodate title
+            tight_layout=False,
             xrotation=0,
             datetime_format='%m-%d %H:%M',
             show_nontrading=True
@@ -152,6 +70,26 @@ async def generate_chart(df, token_type):
                     fontweight='bold',
                     fontsize=12,
                     verticalalignment='top')
+
+        # Get current price (last close price from DataFrame)
+        current_price = df['Close'].iloc[-1]
+        
+        # Format price based on value
+        if current_price < 0.01:
+            price_text = f"${current_price:.6f}"
+        elif current_price < 1:
+            price_text = f"${current_price:.4f}"
+        else:
+            price_text = f"${current_price:.2f}"
+
+        # Add current price in upper right corner
+        ax_main.text(0.98, 0.98, price_text,
+                    transform=ax_main.transAxes,
+                    color='white',
+                    fontweight='bold',
+                    fontsize=12,
+                    verticalalignment='top',
+                    horizontalalignment='right')
         
         # Adjust layout
         plt.subplots_adjust(left=0.05, right=0.95, top=0.95)
