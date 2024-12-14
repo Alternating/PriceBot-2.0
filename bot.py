@@ -1,4 +1,4 @@
-# By alternating
+# By alternating update
 import discord
 from discord.ext import tasks, commands
 import requests
