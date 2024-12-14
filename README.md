@@ -8,7 +8,8 @@
 # Bot Commands
 * !price - returns base token based on dexscreener entries located at the top of bot.py (Currently renamed to Tetsuo in the release)
 * !sol - returns sol price
-Development * !chart - Need to add a basic chart grab to display the 1hr chart for selected coins
+
+* Development * !chart - Need to add a basic chart grab to display the 1hr chart for selected coins
 
 # Update package list
 sudo apt update
