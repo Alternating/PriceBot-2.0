@@ -8,7 +8,7 @@ import os
 import settings
 
 async def fetch_candle_data(token_type):
-    """Fetch price data and create 48 hours of 1-hour candles"""
+    """Fetch price data and create 360 hours of 1-hour candles"""
     try:
         url = settings.TETSUO['dex_api'] if token_type == 'tetsuo' else settings.SOL['dex_api']
         print(f"Fetching data from: {url}")
@@ -84,7 +84,7 @@ async def fetch_candle_data(token_type):
         df['High'] = df[['Open', 'High', 'Close']].max(axis=1)
         df['Low'] = df[['Open', 'Low', 'Close']].min(axis=1)
         
-        print(f"Created DataFrame with {len(df)} hourly candles over 48 hours")
+        print(f"Created DataFrame with {len(df)} hourly candles over 360 hours")
         return df
         
     except Exception as e:
