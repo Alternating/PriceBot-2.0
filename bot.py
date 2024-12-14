@@ -67,22 +67,21 @@ class PriceCommands(commands.Cog):
         self.bot = bot
 
     async def check_cooldown(self, ctx, command_type='price'):
-    """Check if command is on cooldown"""
-    current_time = datetime.now()
-    cooldown_key = f"{ctx.channel.id}_{command_type}"
+        """Check if command is on cooldown"""
+        current_time = datetime.now()
+        cooldown_key = f"{ctx.channel.id}_{command_type}"
     
-    if cooldown_key in self.bot.command_cooldowns:
-        time_diff = (current_time - self.bot.command_cooldowns[cooldown_key]).total_seconds()
+        if cooldown_key in self.bot.command_cooldowns:
+            time_diff = (current_time - self.bot.command_cooldowns[cooldown_key]).total_seconds()
         # Use different cooldown times for different commands
-        cooldown = settings.CHART_COOLDOWN if command_type == 'chart' else settings.PRICE_COOLDOWN
-        if time_diff < cooldown:
-            remaining = int(cooldown - time_diff)
-            await ctx.send(f'⏳ This command is on cooldown. Please wait {remaining} seconds.')
-            return False
+            cooldown = settings.CHART_COOLDOWN if command_type == 'chart' else settings.PRICE_COOLDOWN
+            if time_diff < cooldown:
+                remaining = int(cooldown - time_diff)
+                await ctx.send(f'⏳ This command is on cooldown. Please wait {remaining} seconds.')
+                return False
             
-    self.bot.command_cooldowns[cooldown_key] = current_time
-    return True
-
+        self.bot.command_cooldowns[cooldown_key] = current_time
+        return True
 
 # command for price check tetsuo
 
