@@ -1,3 +1,5 @@
+# By Alternating 2024
+
 import discord
 from discord.ext import tasks, commands
 import requests
@@ -23,22 +25,6 @@ class PriceBot(commands.Bot):
         self.last_chart_command = {}
         self.price_cooldown = settings.PRICE_COOLDOWN
         self.chart_cooldown = settings.CHART_COOLDOWN
-
-class PriceBot(commands.Bot):
-    def __init__(self):
-        intents = discord.Intents.default()
-        intents.message_content = True
-        super().__init__(command_prefix='!', intents=intents)
-        
-        self.token = 'YOUR_TOKEN_HERE'  # Replace with your bot token
-        self.token_api_url = 'https://api.dexscreener.com/latest/dex/tokens/8i51XNNpGaKaj4G4nDdmQh95v4FKAxw8mhtaRoKd9tE8'
-        self.sol_api_url = 'https://api.dexscreener.com/latest/dex/pairs/osmosis/1960'
-        self.tetsuo_address = '8i51XNNpGaKaj4G4nDdmQh95v4FKAxw8mhtaRoKd9tE8'
-        self.last_price_command = {}  # Store last command usage per channel
-        self.last_sol_command = {}    # Store last SOL command usage per channel
-        self.last_chart_command = {}  # Store last chart command usage per channel
-        self.price_cooldown = 300     # Cooldown in seconds
-        self.chart_cooldown = 300     # Chart command cooldown
 
     async def setup_hook(self):
         self.update_price.start()
@@ -220,6 +206,7 @@ class PriceCommands(commands.Cog):
             finally:
                 await context.close()
                 await browser.close()
+                
 
     async def capture_dexscreener_chart(self, token_address):
         """Captures a screenshot of a DexScreener chart using headless browser mode."""
