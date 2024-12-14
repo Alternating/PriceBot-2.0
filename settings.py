@@ -3,7 +3,7 @@ BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE'
 
 # Cooldown settings (in seconds)
 PRICE_COOLDOWN = 300
-CHART_COOLDOWN = 300
+CHART_COOLDOWN = 15
 
 # Token addresses and API endpoints
 TETSUO = {
