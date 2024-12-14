@@ -88,9 +88,10 @@ async def generate_chart(df, token_type):
         mc = mpf.make_marketcolors(
             up=settings.CHART_COLORS['up_candle'],
             down=settings.CHART_COLORS['down_candle'],
-            edge=settings.CHART_COLORS['edge_color'],
-            volume=settings.CHART_COLORS['volume_up'],
-            volume_down=settings.CHART_COLORS['volume_down']
+            edge='inherit',  # Use the same color as the candle
+            wick='inherit',  # Use the same color as the candle
+            volume={'up': settings.CHART_COLORS['up_candle'], 
+                   'down': settings.CHART_COLORS['down_candle']},
         )
 
         s = mpf.make_mpf_style(
@@ -116,7 +117,8 @@ async def generate_chart(df, token_type):
             ylabel_lower='Volume',
             returnfig=True,
             figsize=(12, 8),
-            panel_ratios=(3, 1)
+            panel_ratios=(3, 1),
+            tight_layout=True
         )
 
         # Save to file
@@ -124,7 +126,7 @@ async def generate_chart(df, token_type):
         filename = f"{settings.SCREENSHOT_DIR}/chart_{timestamp}.png"
         os.makedirs(settings.SCREENSHOT_DIR, exist_ok=True)
         
-        fig.savefig(filename, dpi=100, bbox_inches='tight')
+        fig.savefig(filename, dpi=100, bbox_inches='tight', facecolor=settings.CHART_COLORS['background'])
         plt.close(fig)
         
         return filename
