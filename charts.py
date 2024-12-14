@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import mplfinance as mpf
 from io import BytesIO
 import matplotlib.pyplot as plt
@@ -43,7 +44,6 @@ async def fetch_candle_data(token_type):
             current_time = datetime.now()
 
             # Create synthetic OHLC data for the last hour
-            # This is a simplified approach since we can't get real candle data
             price_change = float(pair_data.get('priceChange', {}).get('h1', 0))
             start_price = current_price / (1 + price_change/100)
 
@@ -60,9 +60,9 @@ async def fetch_candle_data(token_type):
             df.set_index('Date', inplace=True)
 
             # Add some variation to make the chart look more natural
-            df['Open'] = df['Open'] * (1 + pd.Series(pd.np.random.normal(0, 0.001, 60)))
-            df['High'] = df[['Open', 'Close']].max(axis=1) * (1 + abs(pd.Series(pd.np.random.normal(0, 0.001, 60))))
-            df['Low'] = df[['Open', 'Close']].min(axis=1) * (1 - abs(pd.Series(pd.np.random.normal(0, 0.001, 60))))
+            df['Open'] = df['Open'] * (1 + pd.Series(np.random.normal(0, 0.001, 60)))
+            df['High'] = df[['Open', 'Close']].max(axis=1) * (1 + abs(pd.Series(np.random.normal(0, 0.001, 60))))
+            df['Low'] = df[['Open', 'Close']].min(axis=1) * (1 - abs(pd.Series(np.random.normal(0, 0.001, 60))))
 
             print(f"Created DataFrame with {len(df)} time periods")
             return df
