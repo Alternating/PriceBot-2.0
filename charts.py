@@ -11,19 +11,52 @@ async def fetch_candle_data(token_type):
     """Fetch candlestick data from DexScreener"""
     try:
         if token_type == 'tetsuo':
-            # Format: chainId/pairAddress
-            url = f"https://api.dexscreener.com/latest/dex/candles/solana/{settings.TETSUO['pair_address']}"
+            # First get the pair data to ensure we have the correct pair
+            response = requests.get(settings.TETSUO['dex_api'])
+            data = response.json()
+            
+            if data and 'pairs' in data and len(data['pairs']) > 0:
+                pair = data['pairs'][0]
+                chain_id = pair.get('chainId', 'solana')
+                pair_address = pair.get('pairAddress')
+                
+                if not pair_address:
+                    print("Could not find pair address")
+                    return None
+                
+                # Format: /latest/dex/candles/chainId/pairAddress?from=1h
+                url = f"https://api.dexscreener.com/latest/dex/candles/{chain_id}/{pair_address}?from=1h"
         else:  # sol
-            # For SOL we use a different endpoint format
-            url = f"https://api.dexscreener.com/latest/dex/candles/solana/SOL"
+            # For SOL we use a different approach
+            url = "https://api.dexscreener.com/latest/dex/pairs/solana/sol"
         
         print(f"Fetching candles from: {url}")  # Debug print
-        response = requests.get(url)
+        
+        # Make the request with a timeout
+        response = requests.get(url, timeout=10)
+        
+        # Check if the response is valid
+        if response.status_code != 200:
+            print(f"API returned status code: {response.status_code}")
+            print(f"Response content: {response.text[:200]}")  # Print first 200 chars of response
+            return None
+            
         data = response.json()
         
-        if 'candles' in data:
+        # For debugging
+        print("API Response structure:", data.keys() if data else "No data")
+        
+        candles_data = None
+        if token_type == 'tetsuo':
+            candles_data = data.get('candles', [])
+        else:  # sol
+            # For SOL, the structure might be different
+            pair_data = data.get('pair', {})
+            candles_data = pair_data.get('candles', [])
+        
+        if candles_data:
             # Convert to pandas DataFrame
-            df = pd.DataFrame(data['candles'])
+            df = pd.DataFrame(candles_data)
             
             # Convert timestamp to datetime
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
@@ -44,13 +77,25 @@ async def fetch_candle_data(token_type):
             # Sort index to ensure chronological order
             df = df.sort_index()
             
+            # Debug print
+            print(f"Successfully created DataFrame with {len(df)} candles")
+            
             return df
         
+        print("No candle data found in response")
+        return None
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Request error: {str(e)}")
+        return None
+    except ValueError as e:
+        print(f"JSON decoding error: {str(e)}")
+        print(f"Raw response: {response.text[:200]}")  # Print first 200 chars of response
         return None
     except Exception as e:
         print(f"Error fetching candle data: {str(e)}")
         return None
-
+    
 async def generate_chart(df, token_type):
     """Generate chart using mplfinance"""
     try:
