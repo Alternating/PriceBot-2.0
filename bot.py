@@ -1,14 +1,12 @@
 # By Alternating 2024
-
 import discord
 from discord.ext import tasks, commands
 import requests
 import asyncio
 import os
-from datetime import datetime, timedelta
-from playwright.async_api import async_playwright
-import time
+from datetime import datetime
 import settings
+import charts
 
 class PriceBot(commands.Bot):
     def __init__(self):
@@ -16,92 +14,29 @@ class PriceBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix='!', intents=intents)
         
-        self.token = settings.BOT_TOKEN
-        self.token_api_url = settings.TETSUO['dex_api']
-        self.sol_api_url = settings.SOL['dex_api']
-        self.tetsuo_address = settings.TETSUO['address']
-        self.last_price_command = {}
-        self.last_sol_command = {}
-        self.last_chart_command = {}
-        self.price_cooldown = settings.PRICE_COOLDOWN
-        self.chart_cooldown = settings.CHART_COOLDOWN
-
+        # Initialize command cooldowns
+        self.command_cooldowns = {}
+        
     async def setup_hook(self):
-        self.update_price.start()
         await self.add_cog(PriceCommands(self))
+        self.update_price.start()
 
     async def on_ready(self):
         print(f'Logged in as {self.user.name} ({self.user.id})')
         print('------')
 
-    def get_price_data(self, url):
-        """Fetch price, 24h change, and market cap from API"""
+    @tasks.loop(seconds=settings.PRICE_COOLDOWN)
+    async def update_price(self):
+        """Update bot's nickname with current price"""
         try:
-            response = requests.get(url)
+            # Fetch TETSUO price data
+            response = requests.get(settings.TETSUO['dex_api'])
             data = response.json()
             
-            if url == self.token_api_url:
-                if data and 'pairs' in data and len(data['pairs']) > 0:
-                    pair = data['pairs'][0]
-                    return {
-                        'price': float(pair['priceUsd']),
-                        'price_change': float(pair['priceChange']['h24']) if 'priceChange' in pair else 0,
-                        'market_cap': float(pair['fdv']) if 'fdv' in pair else None
-                    }
-            else:  # SOL price
-                if data and 'pair' in data:
-                    pair = data['pair']
-                    return {
-                        'price': float(pair['priceUsd']),
-                        'price_change': float(pair['priceChange']['h24']) if 'priceChange' in pair else 0,
-                        'market_cap': float(pair['fdv']) if 'fdv' in pair else None
-                    }
-            return None
-        except Exception as e:
-            print(f'Error fetching price: {str(e)}')
-            return None
-
-    def format_market_cap(self, market_cap):
-        """Format market cap to readable format with appropriate suffix"""
-        if market_cap is None:
-            return "N/A"
-        
-        if market_cap >= 1_000_000_000:  # Billions
-            return f"${market_cap/1_000_000_000:.2f}B"
-        elif market_cap >= 1_000_000:  # Millions
-            return f"${market_cap/1_000_000:.2f}M"
-        else:  # Thousands
-            return f"${market_cap/1_000:.2f}K"
-
-    def format_price_display(self, price, price_change, market_cap):
-        """Format price display with arrow, 24hr change, and market cap"""
-        arrow = "?" if price_change >= 0 else "?"
-        formatted_mcap = self.format_market_cap(market_cap)
-        return f"{arrow} ${price:.4f}\n24hr| {price_change:+.2f}%\nMCAP| {formatted_mcap}"
-
-    async def update_bot_status(self, price_change):
-        """Update bot's status based on 24h price change"""
-        try:
-            # Set status based on price change
-            status = discord.Status.online if price_change >= 0 else discord.Status.dnd
-            
-            # Create activity with just the percentage
-            activity_text = f"24hr| {price_change:+.2f}%"
-            activity = discord.CustomActivity(name=activity_text)
-            
-            # Update bot's presence
-            await self.change_presence(status=status, activity=activity)
-            print(f"Updated status to {status} with message: {activity_text}")
-        except Exception as e:
-            print(f"Error updating status: {str(e)}")
-
-    @tasks.loop(seconds=300)
-    async def update_price(self):
-        try:
-            price_data = self.get_price_data(self.token_api_url)
-            if price_data is not None:
-                price = price_data['price']
-                price_change = price_data['price_change']
+            if data and 'pairs' in data and len(data['pairs']) > 0:
+                pair = data['pairs'][0]
+                price = float(pair['priceUsd'])
+                price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
                 
                 # Format nickname with arrow
                 arrow = "↗" if price_change >= 0 else "↘"
@@ -115,10 +50,10 @@ class PriceBot(commands.Bot):
                     except discord.errors.Forbidden:
                         print(f'Missing permissions to change nickname in {guild.name}')
                 
-                # Update bot's status
-                await self.update_bot_status(price_change)
-            else:
-                print('Failed to fetch price data')
+                # Update bot's status based on price change
+                status = discord.Status.online if price_change >= 0 else discord.Status.dnd
+                activity = discord.CustomActivity(name=f"24hr| {price_change:+.2f}%")
+                await self.change_presence(status=status, activity=activity)
                 
         except Exception as e:
             print(f'Error updating price: {str(e)}')
@@ -131,200 +66,78 @@ class PriceCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def capture_dexscreener_chart(self, token_address):
-        """Captures a screenshot of a DexScreener chart using headless browser mode."""
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=settings.BROWSER_ARGS
-            )
-            
-            context = await browser.new_context(
-                viewport=settings.VIEWPORT_SETTINGS,
-                color_scheme='dark'
-            )
-            
-            page = await context.new_page()
-            
-            try:
-                url = f"https://dexscreener.com/solana/{token_address}"
+    async def check_cooldown(self, ctx, command_name: str) -> bool:
+        """Check if command is on cooldown"""
+        current_time = datetime.now()
+        cooldown_key = f"{ctx.channel.id}_{command_name}"
+        
+        if cooldown_key in self.bot.command_cooldowns:
+            time_diff = (current_time - self.bot.command_cooldowns[cooldown_key]).total_seconds()
+            if time_diff < settings.PRICE_COOLDOWN:
+                remaining = int(settings.PRICE_COOLDOWN - time_diff)
+                await ctx.send(f'⏳ This command is on cooldown. Please wait {remaining} seconds.')
+                return False
                 
-                await page.goto(url, wait_until='networkidle', timeout=60000)
-                await page.wait_for_selector('[data-price]', timeout=60000)
-                
-                chart_element = None
-                for selector in settings.CHART_SELECTORS:
-                    try:
-                        chart_element = await page.wait_for_selector(selector, timeout=5000, state='visible')
-                        if chart_element:
-                            print(f"Found chart with selector: {selector}")
-                            break
-                    except Exception:
-                        continue
-                
-                if not chart_element:
-                    raise Exception("Could not find chart element with any known selector")
-                
-                await asyncio.sleep(5)
-                
-                for selector in settings.TIMEFRAME_SELECTORS:
-                    try:
-                        button = await page.wait_for_selector(selector, timeout=5000)
-                        if button:
-                            await button.click()
-                            print(f"Clicked timeframe button with selector: {selector}")
-                            break
-                    except Exception:
-                        continue
-                
-                await asyncio.sleep(3)
-                
-                os.makedirs(settings.SCREENSHOT_DIR, exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"{settings.SCREENSHOT_DIR}/dexscreener_chart_{timestamp}.png"
-                
-                await page.screenshot(path=filename)
-                
-                chart_box = await chart_element.bounding_box()
-                if chart_box:
-                    chart_box['x'] = max(0, chart_box['x'] - 10)
-                    chart_box['y'] = max(0, chart_box['y'] - 10)
-                    chart_box['width'] += 20
-                    chart_box['height'] += 20
-                    
-                    await page.screenshot(
-                        path=filename,
-                        clip=chart_box
-                    )
-                
-                return filename
-                
-            except Exception as e:
-                print(f"Detailed error during screenshot capture: {str(e)}")
-                raise
-                
-            finally:
-                await context.close()
-                await browser.close()
-                
+        self.bot.command_cooldowns[cooldown_key] = current_time
+        return True
 
-    async def capture_dexscreener_chart(self, token_address):
-        """Captures a screenshot of a DexScreener chart using headless browser mode."""
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    '--disable-gpu',
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-setuid-sandbox',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--deterministic-fetch',
-                    '--disable-features=IsolateOrigins',
-                    '--disable-site-isolation-trials'
-                ]
-            )
+    @commands.command(name='tetsuo')
+    async def tetsuo_price(self, ctx):
+        """Display current TETSUO price information"""
+        if not await self.check_cooldown(ctx, 'tetsuo'):
+            return
             
-            context = await browser.new_context(
-                viewport={'width': 1280, 'height': 800},
-                color_scheme='dark'
-            )
+        try:
+            response = requests.get(settings.TETSUO['dex_api'])
+            data = response.json()
             
-            page = await context.new_page()
-            
-            try:
-                url = f"https://dexscreener.com/solana/{token_address}"
+            if data and 'pairs' in data and len(data['pairs']) > 0:
+                pair = data['pairs'][0]
+                price = float(pair['priceUsd'])
+                price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
+                market_cap = float(pair['fdv']) if 'fdv' in pair else None
                 
-                # Navigate to the page and wait for network to be idle
-                await page.goto(url, wait_until='networkidle', timeout=60000)
+                # Create embed
+                color = 0x00ff00 if price_change >= 0 else 0xff0000
+                arrow = "↑" if price_change >= 0 else "↓"
                 
-                # Wait for the price information to be visible first
-                await page.wait_for_selector('[data-price]', timeout=60000)
+                embed = discord.Embed(
+                    title="TETSUO Price Information",
+                    color=color,
+                    timestamp=datetime.now()
+                )
                 
-                # Try multiple possible selectors for the chart
-                chart_selectors = [
-                    '.tv-lightweight-charts',
-                    '#chart-container',
-                    '[data-qa="chart"]',
-                    '.tradingview-chart',
-                    '.chart-container'
-                ]
+                embed.add_field(
+                    name="Current Price",
+                    value=f"{arrow} ${price:.4f}",
+                    inline=False
+                )
                 
-                chart_element = None
-                for selector in chart_selectors:
-                    try:
-                        chart_element = await page.wait_for_selector(selector, timeout=5000, state='visible')
-                        if chart_element:
-                            print(f"Found chart with selector: {selector}")
-                            break
-                    except Exception:
-                        continue
+                embed.add_field(
+                    name="24h Change",
+                    value=f"{price_change:+.2f}%",
+                    inline=True
+                )
                 
-                if not chart_element:
-                    raise Exception("Could not find chart element with any known selector")
-                
-                # Wait for chart data to load
-                await asyncio.sleep(5)
-                
-                # Try to find and click the 1h button
-                timeframe_selectors = [
-                    'button:has-text("1h")',
-                    '[data-qa="time-resolution-button"]:has-text("1h")',
-                    'button[data-resolution="60"]',
-                    'button.resolution-button:has-text("1h")'
-                ]
-                
-                for selector in timeframe_selectors:
-                    try:
-                        button = await page.wait_for_selector(selector, timeout=5000)
-                        if button:
-                            await button.click()
-                            print(f"Clicked timeframe button with selector: {selector}")
-                            break
-                    except Exception:
-                        continue
-                
-                # Wait for chart to update
-                await asyncio.sleep(3)
-                
-                # Create screenshots directory
-                os.makedirs('screenshots', exist_ok=True)
-                
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"screenshots/dexscreener_chart_{timestamp}.png"
-                
-                # Take a screenshot of the entire page first
-                await page.screenshot(path=filename)
-                
-                # Get the chart dimensions for cropping
-                chart_box = await chart_element.bounding_box()
-                if chart_box:
-                    # Add some padding
-                    chart_box['x'] = max(0, chart_box['x'] - 10)
-                    chart_box['y'] = max(0, chart_box['y'] - 10)
-                    chart_box['width'] += 20
-                    chart_box['height'] += 20
-                    
-                    # Take a new screenshot of just the chart area
-                    await page.screenshot(
-                        path=filename,
-                        clip=chart_box
+                if market_cap:
+                    market_cap_formatted = f"${market_cap/1_000_000:.2f}M"
+                    embed.add_field(
+                        name="Market Cap",
+                        value=market_cap_formatted,
+                        inline=True
                     )
                 
-                return filename
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send("❌ Unable to fetch price data")
                 
-            except Exception as e:
-                print(f"Detailed error during screenshot capture: {str(e)}")
-                raise
-                
-            finally:
-                await context.close()
-                await browser.close()
+        except Exception as e:
+            print(f"Error in tetsuo_price: {str(e)}")
+            await ctx.send("❌ Error fetching price data")
 
     @commands.command(name='chart')
     async def chart_command(self, ctx, token_type: str = None):
-        """Command to fetch and display chart for tetsuo or sol"""
+        """Display price chart for TETSUO or SOL"""
         if not token_type:
             await ctx.send("❌ Please specify either 'tetsuo' or 'sol' after the command.")
             return
@@ -342,140 +155,41 @@ class PriceCommands(commands.Cog):
                 # Send initial message
                 status_msg = await ctx.send("📊 Generating chart, please wait...")
                 
-                # Get token address based on type
-                token_address = self.bot.tetsuo_address if token_type == 'tetsuo' else 'sol'
+                # Generate chart using charts module
+                chart_path = await charts.create_price_chart(token_type)
                 
-                # Capture chart
-                screenshot_path = await self.capture_dexscreener_chart(token_address)
+                if chart_path is None:
+                    await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
+                    return
                 
                 # Create embed with chart
                 embed = discord.Embed(
-                    title=f"{'Tetsuo' if token_type == 'tetsuo' else 'Solana'} Price Chart (1H)",
+                    title=f"{'TETSUO' if token_type == 'tetsuo' else 'Solana'} Price Chart (1H)",
                     color=0x00ff00,
                     timestamp=datetime.now()
                 )
                 
                 # Add the chart image to the embed
-                file = discord.File(screenshot_path, filename="chart.png")
+                file = discord.File(chart_path, filename="chart.png")
                 embed.set_image(url="attachment://chart.png")
-                
-                # Update cooldown
-                self.bot.last_chart_command[ctx.channel.id] = datetime.now()
                 
                 # Send embed with chart
                 await ctx.send(file=file, embed=embed)
                 
-                # Delete status message and clean up screenshot
+                # Delete status message and clean up chart file
                 await status_msg.delete()
-                os.remove(screenshot_path)
+                os.remove(chart_path)
                 
             except Exception as e:
                 await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-                print(f"Error generating chart: {str(e)}")
-
-
-    @commands.command(name='tetsuo')
-    async def price_command(self, ctx):
-        if not await self.check_cooldown(ctx, 'price'):
-            return
-        
-        price_data = self.bot.get_price_data(self.bot.token_api_url)
-        if price_data is not None:
-            # Determine arrow and color
-            arrow = "↗" if price_data['price_change'] >= 0 else "↘"
-            color = 0x00ff00 if price_data['price_change'] >= 0 else 0xff0000
-            
-            # Format market cap
-            market_cap = self.bot.format_market_cap(price_data['market_cap'])
-            
-            # Create embed
-            embed = discord.Embed(
-                title="Token Price Information",
-                color=color
-            )
-            
-            # Add fields
-            embed.add_field(
-                name="Current Price",
-                value=f"{arrow} ${price_data['price']:.4f}",
-                inline=False
-            )
-            embed.add_field(
-                name="24h Change",
-                value=f"{price_data['price_change']:+.2f}%",
-                inline=True
-            )
-            embed.add_field(
-                name="Market Cap",
-                value=market_cap,
-                inline=True
-            )
-            
-            # Add footer with update info
-            embed.set_footer(text="Price updates every 60 seconds")
-            
-            await ctx.send(embed=embed)
-            self.bot.last_price_command[ctx.channel.id] = datetime.now()
-        else:
-            await ctx.send("? Unable to fetch price data. Please try again later.")
-
-
-    @commands.command(name='sol')
-    async def sol_price_command(self, ctx):
-        if not await self.check_cooldown(ctx, 'sol'):
-            return
-        
-        price_data = self.bot.get_price_data(self.bot.sol_api_url)
-        if price_data is not None:
-            # Determine arrow and color
-            arrow = "?" if price_data['price_change'] >= 0 else "?"
-            color = 0x00ff00 if price_data['price_change'] >= 0 else 0xff0000
-            
-            # Format market cap
-            market_cap = self.bot.format_market_cap(price_data['market_cap'])
-            
-            # Create embed
-            embed = discord.Embed(
-                title="Solana Price Information",
-                color=color
-            )
-            
-            # Add fields
-            embed.add_field(
-                name="Current Price",
-                value=f"{arrow} ${price_data['price']:.4f}",
-                inline=False
-            )
-            embed.add_field(
-                name="24h Change",
-                value=f"{price_data['price_change']:+.2f}%",
-                inline=True
-            )
-            embed.add_field(
-                name="Market Cap",
-                value=market_cap,
-                inline=True
-            )
-            
-            # Add footer with update info
-            embed.set_footer(text="Price updates every 60 seconds")
-            
-            await ctx.send(embed=embed)
-            self.bot.last_sol_command[ctx.channel.id] = datetime.now()
-        else:
-            await ctx.send("? Unable to fetch SOL price data. Please try again later.")
-
+                print(f"Error in chart command: {str(e)}")
 
 def main():
     try:
         bot = PriceBot()
-        bot.run(bot.token)
+        bot.run(settings.BOT_TOKEN)
     except Exception as e:
         print(f"Error starting bot: {str(e)}")
-        print("Please make sure you have:")
-        print("1. Updated discord.py using: pip install -U discord.py")
-        print("2. Enabled Message Content Intent in Discord Developer Portal")
-        print("3. Added your bot token to the code")
 
 if __name__ == "__main__":
     main()
