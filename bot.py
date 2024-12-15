@@ -112,6 +112,7 @@ class PriceCommands(commands.Cog):
                     timestamp=datetime.now()
                 )
                 
+                # First row: Price and 24h Change
                 embed.add_field(
                     name="Current Price",
                     value=f"{arrow} ${price:.4f}",
@@ -124,6 +125,10 @@ class PriceCommands(commands.Cog):
                     inline=True
                 )
                 
+                # Add empty field to force next row
+                embed.add_field(name="\u200b", value="\u200b", inline=True)
+                
+                # Second row: Market Cap and Volume
                 if market_cap:
                     market_cap_formatted = f"${market_cap/1_000_000:.2f}M"
                     embed.add_field(
@@ -131,6 +136,8 @@ class PriceCommands(commands.Cog):
                         value=market_cap_formatted,
                         inline=True
                     )
+                else:
+                    embed.add_field(name="Market Cap", value="N/A", inline=True)
 
                 if volume_24h:
                     volume_formatted = f"${volume_24h:,.0f}"
@@ -139,8 +146,14 @@ class PriceCommands(commands.Cog):
                         value=volume_formatted,
                         inline=True
                     )
+                else:
+                    embed.add_field(name="24h Volume", value="N/A", inline=True)
+                
+                # Add empty field to maintain grid
+                embed.add_field(name="\u200b", value="\u200b", inline=True)
                 
                 await ctx.send(embed=embed)
+                
             else:
                 await ctx.send("❌ Unable to fetch price data")
                 
@@ -177,6 +190,7 @@ class PriceCommands(commands.Cog):
                     timestamp=datetime.now()
                 )
                 
+                # First row: Price and 24h Change
                 embed.add_field(
                     name="Current Price",
                     value=f"{arrow} ${price:.2f}",
@@ -189,6 +203,10 @@ class PriceCommands(commands.Cog):
                     inline=True
                 )
                 
+                # Add empty field to force next row
+                embed.add_field(name="\u200b", value="\u200b", inline=True)
+                
+                # Second row: Market Cap and Volume
                 if market_cap:
                     market_cap_formatted = f"${market_cap/1_000_000:.2f}M"
                     embed.add_field(
@@ -196,6 +214,8 @@ class PriceCommands(commands.Cog):
                         value=market_cap_formatted,
                         inline=True
                     )
+                else:
+                    embed.add_field(name="Market Cap", value="N/A", inline=True)
 
                 if volume_24h:
                     volume_formatted = f"${volume_24h:,.0f}"
@@ -204,8 +224,14 @@ class PriceCommands(commands.Cog):
                         value=volume_formatted,
                         inline=True
                     )
+                else:
+                    embed.add_field(name="24h Volume", value="N/A", inline=True)
+                
+                # Add empty field to maintain grid
+                embed.add_field(name="\u200b", value="\u200b", inline=True)
                 
                 await ctx.send(embed=embed)
+                
             else:
                 await ctx.send("❌ Unable to fetch SOL price data")
                 
