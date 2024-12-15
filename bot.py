@@ -129,7 +129,7 @@ class PriceCommands(commands.Cog):
                     embed.add_field(
                         name="Market Cap",
                         value=market_cap_formatted,
-                        inline=False
+                        inline=True
                     )
 
                 if volume_24h:
@@ -137,7 +137,7 @@ class PriceCommands(commands.Cog):
                     embed.add_field(
                         name="24h Volume",
                         value=volume_formatted,
-                        inline=True
+                        inline=False
                     )
                 
                 await ctx.send(embed=embed)
@@ -194,7 +194,7 @@ class PriceCommands(commands.Cog):
                     embed.add_field(
                         name="Market Cap",
                         value=market_cap_formatted,
-                        inline=False
+                        inline=True
                     )
 
                 if volume_24h:
@@ -202,7 +202,7 @@ class PriceCommands(commands.Cog):
                     embed.add_field(
                         name="24h Volume",
                         value=volume_formatted,
-                        inline=True
+                        inline=False
                     )
                 
                 await ctx.send(embed=embed)
