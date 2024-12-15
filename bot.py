@@ -115,13 +115,13 @@ class PriceCommands(commands.Cog):
                 embed.add_field(
                     name="Current Price",
                     value=f"{arrow} ${price:.4f}",
-                    inline=True
+                    inline=False
                 )
                 
                 embed.add_field(
                     name="24h Change",
                     value=f"{price_change:+.2f}%",
-                    inline=True
+                    inline=False
                 )
                 
                 if market_cap:
@@ -186,7 +186,7 @@ class PriceCommands(commands.Cog):
                 embed.add_field(
                     name="24h Change",
                     value=f"{price_change:+.2f}%",
-                    inline=True
+                    inline=False
                 )
                 
                 if market_cap:
@@ -194,7 +194,7 @@ class PriceCommands(commands.Cog):
                     embed.add_field(
                         name="Market Cap",
                         value=market_cap_formatted,
-                        inline=False
+                        inline=True
                     )
 
                 if volume_24h:
