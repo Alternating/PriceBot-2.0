@@ -194,7 +194,7 @@ class PriceCommands(commands.Cog):
                     embed.add_field(
                         name="Market Cap",
                         value=market_cap_formatted,
-                        inline=True
+                        inline=False
                     )
 
                 if volume_24h:
