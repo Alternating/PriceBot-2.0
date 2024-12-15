@@ -115,7 +115,7 @@ class PriceCommands(commands.Cog):
                 embed.add_field(
                     name="Current Price",
                     value=f"{arrow} ${price:.4f}",
-                    inline=False
+                    inline=True
                 )
                 
                 embed.add_field(
@@ -137,7 +137,7 @@ class PriceCommands(commands.Cog):
                     embed.add_field(
                         name="24h Volume",
                         value=volume_formatted,
-                        inline=False
+                        inline=True
                     )
                 
                 await ctx.send(embed=embed)
@@ -180,7 +180,7 @@ class PriceCommands(commands.Cog):
                 embed.add_field(
                     name="Current Price",
                     value=f"{arrow} ${price:.2f}",
-                    inline=False
+                    inline=True
                 )
                 
                 embed.add_field(
@@ -202,7 +202,7 @@ class PriceCommands(commands.Cog):
                     embed.add_field(
                         name="24h Volume",
                         value=volume_formatted,
-                        inline=False
+                        inline=True
                     )
                 
                 await ctx.send(embed=embed)
