@@ -100,8 +100,9 @@ class PriceCommands(commands.Cog):
                 price = float(pair['priceUsd'])
                 price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
                 market_cap = float(pair['fdv']) if 'fdv' in pair else None
+                volume_24h = float(pair['volume']['h24']) if 'volume' in pair and 'h24' in pair['volume'] else None
                 
-# Create embed for tetsuo price - displays in discord
+                # Create embed
                 color = 0x00ff00 if price_change >= 0 else 0xff0000
                 arrow = "↑" if price_change >= 0 else "↓"
                 
@@ -130,6 +131,14 @@ class PriceCommands(commands.Cog):
                         value=market_cap_formatted,
                         inline=True
                     )
+
+                if volume_24h:
+                    volume_formatted = f"${volume_24h:,.0f}"
+                    embed.add_field(
+                        name="24h Volume",
+                        value=volume_formatted,
+                        inline=True
+                    )
                 
                 await ctx.send(embed=embed)
             else:
@@ -156,6 +165,7 @@ class PriceCommands(commands.Cog):
                 price = float(pair['priceUsd'])
                 price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
                 market_cap = float(pair['fdv']) if 'fdv' in pair else None
+                volume_24h = float(pair['volume']['h24']) if 'volume' in pair and 'h24' in pair['volume'] else None
                 
                 # Create embed
                 color = 0x00ff00 if price_change >= 0 else 0xff0000
@@ -169,7 +179,7 @@ class PriceCommands(commands.Cog):
                 
                 embed.add_field(
                     name="Current Price",
-                    value=f"{arrow} ${price:.4f}",
+                    value=f"{arrow} ${price:.2f}",
                     inline=False
                 )
                 
@@ -186,6 +196,14 @@ class PriceCommands(commands.Cog):
                         value=market_cap_formatted,
                         inline=True
                     )
+
+                if volume_24h:
+                    volume_formatted = f"${volume_24h:,.0f}"
+                    embed.add_field(
+                        name="24h Volume",
+                        value=volume_formatted,
+                        inline=True
+                    )
                 
                 await ctx.send(embed=embed)
             else:
@@ -194,57 +212,6 @@ class PriceCommands(commands.Cog):
         except Exception as e:
             print(f"Error in sol_price: {str(e)}")
             await ctx.send("❌ Error fetching SOL price data")
-
-# command for chart calls on chart.py - displays chart in discord
-            
-    @commands.command(name='chart')
-    async def chart_command(self, ctx, token_type: str = None):
-        """Display price chart for TETSUO or SOL"""
-        if not token_type:
-            await ctx.send("❌ Please specify either 'tetsuo' or 'sol' after the command.")
-            return
-            
-        if not await self.check_cooldown(ctx, 'chart'):
-            return
-            
-        token_type = token_type.lower()
-        if token_type not in ['tetsuo', 'sol']:
-            await ctx.send("❌ Invalid token type. Please use either 'tetsuo' or 'sol'.")
-            return
-            
-        async with ctx.typing():
-            try:
-                # Send initial message
-                status_msg = await ctx.send("📊 Generating chart, please wait...")
-                
-                # Generate chart using charts module
-                chart_path = await charts.create_price_chart(token_type)
-                
-                if chart_path is None:
-                    await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-                    return
-                
-                # Create embed with chart
-                embed = discord.Embed(
-                    title=f"{'TETSUO' if token_type == 'tetsuo' else 'Solana'} Price Chart (1H)",
-                    color=0x00ff00,
-                    timestamp=datetime.now()
-                )
-                
-                # Add the chart image to the embed
-                file = discord.File(chart_path, filename="chart.png")
-                embed.set_image(url="attachment://chart.png")
-                
-                # Send embed with chart
-                await ctx.send(file=file, embed=embed)
-                
-                # Delete status message and clean up chart file
-                await status_msg.delete()
-                os.remove(chart_path)
-                
-            except Exception as e:
-                await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-                print(f"Error in chart command: {str(e)}")
 
 def main():
     try:
