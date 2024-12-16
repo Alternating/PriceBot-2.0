@@ -8,7 +8,7 @@ import os
 import settings
 
 async def fetch_candle_data(token_type):
-    """Fetch price data and create 96 hours of 1-hour candles"""
+    """Fetch price data and create 24 hours of 1-hour candles"""
     try:
         url = settings.TETSUO['dex_api'] if token_type == 'tetsuo' else settings.SOL['dex_api']
         print(f"Fetching data from: {url}")
@@ -29,7 +29,7 @@ async def fetch_candle_data(token_type):
         # Get current price and create time series
         current_price = float(pair_data['priceUsd'])
         end_time = datetime.now()
-        start_time = end_time - timedelta(hours=96)  # Get 96 hours
+        start_time = end_time - timedelta(hours=24)  # Get 24 hours
         
         # Create datetime range with 1-hour intervals
         dates = pd.date_range(start=start_time, end=end_time, freq='1H')
