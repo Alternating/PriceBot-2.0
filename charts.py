@@ -31,57 +31,47 @@ async def fetch_candle_data(token_type):
         dates = pd.date_range(start=start_time, end=end_time, freq='1H')
         
         num_periods = len(dates)
+        price_trend = np.zeros(num_periods)
+        price_trend[0] = current_price / 1.5  # Start lower to show uptrend
         
-        # Generate more realistic price data with distinct movements
-        price_data = []
-        last_price = current_price / 1.5  # Start lower to show uptrend
-        trend = 0
-        volatility = 0.03  # Increased volatility for more pronounced moves
+        # More pronounced price movements
+        volatility = 0.015  # Increased for more visible price action
+        momentum = 0
         
-        for i in range(num_periods):
-            # Generate current candle
-            open_price = last_price
+        for i in range(1, num_periods):
+            random_change = np.random.normal(0, volatility)
+            momentum = momentum * 0.95 + random_change * 0.5
+            trend_factor = 0.02 * (current_price - price_trend[i-1]) / current_price
             
-            # Add trend and volatility
-            trend = trend * 0.95 + np.random.normal(0, 0.02)  # Trend momentum
-            move = np.random.normal(trend, volatility)  # Price move for this period
-            
-            # Generate more distinct candles
-            close_price = open_price * (1 + move)
-            
-            # Create wider range for highs and lows
-            if move > 0:
-                high = max(open_price, close_price) * (1 + abs(move) * np.random.uniform(0.5, 1.0))
-                low = min(open_price, close_price) * (1 - abs(move) * np.random.uniform(0.2, 0.4))
-            else:
-                high = max(open_price, close_price) * (1 + abs(move) * np.random.uniform(0.2, 0.4))
-                low = min(open_price, close_price) * (1 - abs(move) * np.random.uniform(0.5, 1.0))
-            
-            price_data.append([open_price, high, low, close_price])
-            last_price = close_price
+            total_change = random_change + momentum + trend_factor
+            price_trend[i] = price_trend[i-1] * (1 + total_change)
+
+        # Smooth price trend to match the reference
+        price_trend = np.interp(np.linspace(0, 1, num_periods),
+                              [0, 1],
+                              [price_trend[0], current_price])
         
-        # Scale final prices to match current price
-        scale_factor = current_price / last_price
-        price_data = [[p * scale_factor for p in candle] for candle in price_data]
+        # Generate OHLC data
+        opens = price_trend.copy()
+        closes = np.roll(price_trend, -1)
+        closes[-1] = current_price
         
-        price_array = np.array(price_data)
+        # Create sharp candles with distinct wicks
+        high_low_range = 0.015  # Increased range for visible wicks
+        highs = np.maximum(opens, closes) * (1 + np.random.uniform(0, high_low_range, num_periods))
+        lows = np.minimum(opens, closes) * (1 - np.random.uniform(0, high_low_range, num_periods))
         
         # Generate volume data
         base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24
-        volumes = []
-        
-        for i in range(num_periods):
-            # Higher volume on larger price moves
-            price_change = abs(price_array[i, 3] - price_array[i, 0]) / price_array[i, 0]
-            vol_multiplier = 1 + price_change * 10  # More volume on bigger moves
-            volume = base_volume * vol_multiplier * np.random.uniform(0.5, 2.0)
-            volumes.append(volume)
+        volume_volatility = 0.5
+        volumes = np.random.lognormal(np.log(base_volume), volume_volatility, num_periods)
+        volumes = np.clip(volumes, base_volume * 0.2, base_volume * 3.0)
         
         df = pd.DataFrame({
-            'Open': price_array[:, 0],
-            'High': price_array[:, 1],
-            'Low': price_array[:, 2],
-            'Close': price_array[:, 3],
+            'Open': opens,
+            'High': highs,
+            'Low': lows,
+            'Close': closes,
             'Volume': volumes
         }, index=dates)
         
@@ -92,19 +82,17 @@ async def fetch_candle_data(token_type):
         return None
 
 async def generate_chart(df, token_type):
-    """Generate chart with better volume display"""
+    """Generate chart using mplfinance"""
     try:
-        # Define market colors with explicit volume colors
         mc = mpf.make_marketcolors(
             up='#26a69a',
             down='#ef5350',
-            edge={'up': '#26a69a', 'down': '#ef5350'},
-            wick={'up': '#26a69a', 'down': '#ef5350'},
-            volume={'up': '#26a69a', 'down': '#ef5350'},  # Explicit volume colors
-            inherit=False  # Don't inherit colors
+            edge='inherit',
+            wick='inherit',
+            volume='in',
+            inherit=True
         )
 
-        # Style with darker background
         s = mpf.make_mpf_style(
             base_mpf_style='charles',
             marketcolors=mc,
@@ -116,13 +104,10 @@ async def generate_chart(df, token_type):
                 'axes.labelcolor': '#787B86',
                 'axes.edgecolor': '#363C4E',
                 'xtick.color': '#787B86',
-                'ytick.color': '#787B86',
-                'grid.color': '#363C4E',
-                'grid.linestyle': ':'
+                'ytick.color': '#787B86'
             }
         )
 
-        # Updated plot parameters
         fig, axlist = mpf.plot(
             df,
             type='candle',
@@ -138,16 +123,10 @@ async def generate_chart(df, token_type):
             datetime_format='%d %H:%M',
             show_nontrading=True,
             volume_panel=1,
-            scale_width_adjustment=dict(candle=0.8, volume=0.3),  # Narrower volume bars
-            scale_padding=dict(left=0.2, right=0.2),
+            scale_width_adjustment=dict(candle=0.8, volume=0.7),
+            scale_padding=dict(left=0.1, right=0.1),
             mav=(20,),
-            mavcolors=['#FF9800'],
-            update_width_config=dict(
-                candle_linewidth=1.0,
-                candle_width=0.8,
-                volume_width=0.3,  # Narrower volume bars
-                volume_linewidth=0.5
-            )
+            mavcolors=['#FF9800']
         )
 
         # Customize axes
@@ -160,7 +139,7 @@ async def generate_chart(df, token_type):
         ax_volume.yaxis.set_label_position('right')
         ax_volume.yaxis.tick_right()
 
-        # Add pair name and price
+        # Add pair name and current price
         pair_name = f"{token_type.upper()}/SOL"
         ax_main.text(0.02, 0.98, pair_name,
                     transform=ax_main.transAxes,
