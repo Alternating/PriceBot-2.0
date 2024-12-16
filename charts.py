@@ -29,7 +29,7 @@ async def fetch_candle_data(token_type):
         # Get current price and create time series
         current_price = float(pair_data['priceUsd'])
         end_time = datetime.now()
-        start_time = end_time - timedelta(hours=24)  # Get 24 hours
+        start_time = end_time - timedelta(hours=120)  # Get 120 hours
         
         # Create datetime range with 1-hour intervals
         dates = pd.date_range(start=start_time, end=end_time, freq='1H')
@@ -47,7 +47,7 @@ async def fetch_candle_data(token_type):
         price_trend[0] = start_price
         
         # Create price movements
-        volatility = 0.015
+        volatility = 0.008 # Reduced from 0.015 for tighter ranges
         for i in range(1, num_periods):
             # Random walk with drift towards current price
             change = np.random.normal(0, volatility)
@@ -63,8 +63,10 @@ async def fetch_candle_data(token_type):
         closes[-1] = current_price
         
         # Calculate highs and lows
-        highs = np.maximum(opens, closes) * (1 + np.random.uniform(0.001, 0.002, num_periods))
-        lows = np.minimum(opens, closes) * (1 - np.random.uniform(0.001, 0.002, num_periods))
+        #highs = np.maximum(opens, closes) * (1 + np.random.uniform(0.001, 0.002, num_periods))
+        #lows = np.minimum(opens, closes) * (1 - np.random.uniform(0.001, 0.002, num_periods))
+        highs = np.maximum(opens, closes) * (1 + np.random.uniform(0.0005, 0.001, num_periods))
+        lows = np.minimum(opens, closes) * (1 - np.random.uniform(0.0005, 0.001, num_periods))
         
         # Generate hourly volume data
         base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24
