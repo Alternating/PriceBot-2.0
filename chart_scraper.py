@@ -20,20 +20,38 @@ class CloudflareSession:
             'upgrade-insecure-requests': '1'
         }
 
-def capture_chart():
+def capture_chart(token_type: str = 'tetsuo'):
+    """
+    Capture chart for specified token
+    
+    Args:
+        token_type (str): Token to capture chart for ('tetsuo' or 'sol')
+    
+    Returns:
+        str: Path to saved screenshot or None if error
+    """
+    # URLs for different tokens
+    urls = {
+        'tetsuo': "https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6",
+        'sol': "https://dexscreener.com/osmosis/1960"  # Using your SOL pair from bot.py
+    }
+    
+    if token_type.lower() not in urls:
+        print(f"Unsupported token type: {token_type}")
+        return None
+        
     session = CloudflareSession()
-    url = "https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6"
+    url = urls[token_type.lower()]
     
     with sync_playwright() as p:
         try:
-            print("\nStarting chart capture process...")
+            print(f"\nStarting chart capture for {token_type.upper()}...")
             
             browser = p.chromium.launch(
-                headless=False,
+                headless=True,
                 args=['--disable-blink-features=AutomationControlled']
             )
             
-            # Set larger viewport size
             context = browser.new_context(
                 extra_http_headers=session.headers,
                 viewport={'width': 1920, 'height': 1080},
@@ -55,7 +73,6 @@ def capture_chart():
             frame = iframe.content_frame()
             
             print("Setting 1h timeframe...")
-            # Click 1h timeframe button
             frame.get_by_role("radio", name="1 hour").click()
             
             # Wait for chart update
@@ -63,24 +80,24 @@ def capture_chart():
             
             print("Taking screenshot...")
             os.makedirs("screenshots", exist_ok=True)
-            timestamp = time.strftime("%Y%m%d-%H%M%S")
-            screenshot_path = f"screenshots/chart_{timestamp}.png"
             
-            # Get the chart widget container
+            # Use static filename based on token
+            screenshot_path = f"screenshots/{token_type.lower()}_chart.png"
+            
+            # Get the chart widget container and take screenshot
             chart_widget = frame.locator(".chart-widget").first
-            
-            # Take the screenshot
             chart_widget.screenshot(path=screenshot_path)
             
             print(f"✅ Screenshot saved to: {screenshot_path}")
-            
-            print("\nPress Enter to close browser...")
-            input()
+            return screenshot_path
             
         except Exception as e:
             print(f"Error during capture: {str(e)}")
+            return None
         finally:
             browser.close()
 
 if __name__ == "__main__":
-    capture_chart()
+    # Example usage
+    capture_chart('tetsuo')  # Will save as tetsuo_chart.png
+    # capture_chart('sol')   # Will save as sol_chart.png
