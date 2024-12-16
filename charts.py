@@ -8,7 +8,7 @@ import os
 import settings
 
 async def fetch_candle_data(token_type):
-    """Fetch price data and create 120 hours of 1-hour candles with high-resolution price movements"""
+    """Fetch price data and create 120 hours of 1-hour candles"""
     try:
         url = settings.TETSUO['dex_api'] if token_type == 'tetsuo' else settings.SOL['dex_api']
         print(f"Fetching data from: {url}")
@@ -30,44 +30,59 @@ async def fetch_candle_data(token_type):
         start_time = end_time - timedelta(hours=120)
         dates = pd.date_range(start=start_time, end=end_time, freq='1H')
         
-        price_changes = pair_data.get('priceChange', {})
-        h24_change = float(price_changes.get('h24', 0) or 0)
-        start_price = current_price / (1 + h24_change/100) if h24_change != -100 else current_price
-        
         num_periods = len(dates)
         
-        # Use real price movements with higher volatility
-        volatility = 0.015  # Increased for more visible price action
+        # Generate more realistic price data with distinct movements
         price_data = []
-        current = start_price
+        last_price = current_price / 1.5  # Start lower to show uptrend
+        trend = 0
+        volatility = 0.03  # Increased volatility for more pronounced moves
         
-        for _ in range(num_periods):
-            open_price = current
-            # Generate more dramatic price movements
-            change = np.random.normal(0, volatility)
-            high = open_price * (1 + abs(change) * 0.5)
-            low = open_price * (1 - abs(change) * 0.5)
-            close = open_price * (1 + change)
-            current = close
-            price_data.append([open_price, high, low, close])
+        for i in range(num_periods):
+            # Generate current candle
+            open_price = last_price
+            
+            # Add trend and volatility
+            trend = trend * 0.95 + np.random.normal(0, 0.02)  # Trend momentum
+            move = np.random.normal(trend, volatility)  # Price move for this period
+            
+            # Generate more distinct candles
+            close_price = open_price * (1 + move)
+            
+            # Create wider range for highs and lows
+            if move > 0:
+                high = max(open_price, close_price) * (1 + abs(move) * np.random.uniform(0.5, 1.0))
+                low = min(open_price, close_price) * (1 - abs(move) * np.random.uniform(0.2, 0.4))
+            else:
+                high = max(open_price, close_price) * (1 + abs(move) * np.random.uniform(0.2, 0.4))
+                low = min(open_price, close_price) * (1 - abs(move) * np.random.uniform(0.5, 1.0))
+            
+            price_data.append([open_price, high, low, close_price])
+            last_price = close_price
         
-        # Adjust final close to match current price
-        price_data[-1][3] = current_price
+        # Scale final prices to match current price
+        scale_factor = current_price / last_price
+        price_data = [[p * scale_factor for p in candle] for candle in price_data]
+        
         price_array = np.array(price_data)
         
-        # Generate realistic volume data
+        # Generate volume data
         base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24
-        volume_volatility = 0.8  # Increased for more variation
-        volumes = np.random.lognormal(np.log(base_volume), volume_volatility, num_periods)
-        volumes = np.clip(volumes, base_volume * 0.1, base_volume * 5.0)  # Allow more extreme volumes
+        volumes = []
+        
+        for i in range(num_periods):
+            # Higher volume on larger price moves
+            price_change = abs(price_array[i, 3] - price_array[i, 0]) / price_array[i, 0]
+            vol_multiplier = 1 + price_change * 10  # More volume on bigger moves
+            volume = base_volume * vol_multiplier * np.random.uniform(0.5, 2.0)
+            volumes.append(volume)
         
         df = pd.DataFrame({
             'Open': price_array[:, 0],
             'High': price_array[:, 1],
             'Low': price_array[:, 2],
             'Close': price_array[:, 3],
-            'Volume': volumes,
-            'VolumeColor': np.where(price_array[:, 3] >= price_array[:, 0], 1, -1)
+            'Volume': volumes
         }, index=dates)
         
         return df
@@ -77,19 +92,19 @@ async def fetch_candle_data(token_type):
         return None
 
 async def generate_chart(df, token_type):
-    """Generate chart with styling matching the reference image"""
+    """Generate chart with better volume display"""
     try:
-        # Define market colors matching reference
+        # Define market colors with explicit volume colors
         mc = mpf.make_marketcolors(
             up='#26a69a',
             down='#ef5350',
-            edge='inherit',
-            wick='inherit',
-            volume={'up': '#26a69a', 'down': '#ef5350'},
-            inherit=True
+            edge={'up': '#26a69a', 'down': '#ef5350'},
+            wick={'up': '#26a69a', 'down': '#ef5350'},
+            volume={'up': '#26a69a', 'down': '#ef5350'},  # Explicit volume colors
+            inherit=False  # Don't inherit colors
         )
 
-        # Style matching reference dark theme
+        # Style with darker background
         s = mpf.make_mpf_style(
             base_mpf_style='charles',
             marketcolors=mc,
@@ -107,7 +122,7 @@ async def generate_chart(df, token_type):
             }
         )
 
-        # Create plot with adjusted parameters
+        # Updated plot parameters
         fig, axlist = mpf.plot(
             df,
             type='candle',
@@ -123,15 +138,15 @@ async def generate_chart(df, token_type):
             datetime_format='%d %H:%M',
             show_nontrading=True,
             volume_panel=1,
-            scale_width_adjustment=dict(candle=0.6, volume=0.8),  # Thicker candles
+            scale_width_adjustment=dict(candle=0.8, volume=0.3),  # Narrower volume bars
             scale_padding=dict(left=0.2, right=0.2),
             mav=(20,),
-            mavcolors=['#FF9800'],  # Orange moving average
+            mavcolors=['#FF9800'],
             update_width_config=dict(
                 candle_linewidth=1.0,
                 candle_width=0.8,
-                volume_width=0.8,
-                volume_linewidth=1.0
+                volume_width=0.3,  # Narrower volume bars
+                volume_linewidth=0.5
             )
         )
 
