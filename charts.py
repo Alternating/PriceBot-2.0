@@ -98,3 +98,16 @@ async def fetch_candle_data(token_type):
     except Exception as e:
         print(f"Error fetching price data: {str(e)}")
         return None
+async def create_price_chart(token_type):
+    """Main function to create price chart"""
+    try:
+        df = await fetch_candle_data(token_type)
+        if df is None:
+            return None
+            
+        chart_path = await generate_chart(df, token_type)
+        return chart_path
+        
+    except Exception as e:
+        print(f"Error creating price chart: {str(e)}")
+        return None
