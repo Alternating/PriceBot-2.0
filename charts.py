@@ -8,7 +8,7 @@ import os
 import settings
 
 async def fetch_candle_data(token_type):
-    """Fetch price data and create 120 hours of 1-hour candles"""
+    """Fetch price data and create 120 hours of 1-hour candles with high-resolution price movements"""
     try:
         url = settings.TETSUO['dex_api'] if token_type == 'tetsuo' else settings.SOL['dex_api']
         print(f"Fetching data from: {url}")
@@ -16,7 +16,6 @@ async def fetch_candle_data(token_type):
         response = requests.get(url, timeout=10)
         data = response.json()
         
-        # Extract price data
         if token_type == 'tetsuo':
             pair_data = data['pairs'][0] if data and 'pairs' in data and data['pairs'] else None
         else:
@@ -26,82 +25,49 @@ async def fetch_candle_data(token_type):
             print(f"No pair data found for {token_type.upper()}")
             return None
 
-        # Get current price and create time series
         current_price = float(pair_data['priceUsd'])
         end_time = datetime.now()
         start_time = end_time - timedelta(hours=120)
-        
-        # Create datetime range with 1-hour intervals
         dates = pd.date_range(start=start_time, end=end_time, freq='1H')
         
-        # Get price changes
         price_changes = pair_data.get('priceChange', {})
         h24_change = float(price_changes.get('h24', 0) or 0)
-        
-        # Calculate starting price based on 24h change
         start_price = current_price / (1 + h24_change/100) if h24_change != -100 else current_price
         
-        # Generate more realistic price movements
         num_periods = len(dates)
-        price_trend = np.zeros(num_periods)
-        price_trend[0] = start_price
         
-        # Enhanced price movement generation
-        volatility = 0.01  # Reduced for more natural movements
-        momentum = 0
+        # Use real price movements with higher volatility
+        volatility = 0.015  # Increased for more visible price action
+        price_data = []
+        current = start_price
         
-        for i in range(1, num_periods):
-            random_change = np.random.normal(0, volatility)
-            momentum = momentum * 0.95 + random_change * 0.5
-            trend_factor = 0.03 * (current_price - price_trend[i-1]) / current_price
-            
-            total_change = random_change + momentum + trend_factor
-            price_trend[i] = price_trend[i-1] * (1 + total_change)
-            
-            if np.random.random() < 0.1:
-                price_trend[i] *= (1 + np.random.normal(0, volatility * 2))
-
-        # Ensure last price matches current price
-        price_trend = np.interp(np.linspace(0, 1, num_periods),
-                              [0, 1],
-                              [price_trend[0], current_price])
+        for _ in range(num_periods):
+            open_price = current
+            # Generate more dramatic price movements
+            change = np.random.normal(0, volatility)
+            high = open_price * (1 + abs(change) * 0.5)
+            low = open_price * (1 - abs(change) * 0.5)
+            close = open_price * (1 + change)
+            current = close
+            price_data.append([open_price, high, low, close])
         
-        # Generate OHLC data with more pronounced candles
-        opens = price_trend.copy()
-        closes = np.roll(price_trend, -1)
-        closes[-1] = current_price
+        # Adjust final close to match current price
+        price_data[-1][3] = current_price
+        price_array = np.array(price_data)
         
-        # Initialize highs and lows arrays
-        highs = np.zeros(num_periods)
-        lows = np.zeros(num_periods)
-        
-        # Generate more realistic highs and lows based on candle direction
-        high_low_range = 0.005  # Reduced for more realistic wicks
-        for i in range(num_periods):
-            is_upcandle = closes[i] > opens[i]
-            wick_range = high_low_range * (1 + np.random.uniform(-0.5, 0.5))
-            
-            if is_upcandle:
-                highs[i] = closes[i] * (1 + wick_range)
-                lows[i] = opens[i] * (1 - wick_range * 0.5)
-            else:
-                highs[i] = opens[i] * (1 + wick_range * 0.5)
-                lows[i] = closes[i] * (1 - wick_range)
-        
-        # Generate more realistic volume data
+        # Generate realistic volume data
         base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24
-        volume_volatility = 0.5
+        volume_volatility = 0.8  # Increased for more variation
         volumes = np.random.lognormal(np.log(base_volume), volume_volatility, num_periods)
-        volumes = np.clip(volumes, base_volume * 0.2, base_volume * 3.0)
+        volumes = np.clip(volumes, base_volume * 0.1, base_volume * 5.0)  # Allow more extreme volumes
         
-        # Create DataFrame with volume color
         df = pd.DataFrame({
-            'Open': opens,
-            'High': highs,
-            'Low': lows,
-            'Close': closes,
+            'Open': price_array[:, 0],
+            'High': price_array[:, 1],
+            'Low': price_array[:, 2],
+            'Close': price_array[:, 3],
             'Volume': volumes,
-            'VolumeColor': np.where(closes >= opens, 1, -1)  # 1 for green, -1 for red
+            'VolumeColor': np.where(price_array[:, 3] >= price_array[:, 0], 1, -1)
         }, index=dates)
         
         return df
@@ -111,107 +77,104 @@ async def fetch_candle_data(token_type):
         return None
 
 async def generate_chart(df, token_type):
-    """Generate chart using mplfinance with DexScreener-like styling"""
+    """Generate chart with styling matching the reference image"""
     try:
-        # Define colors for the chart
+        # Define market colors matching reference
         mc = mpf.make_marketcolors(
-            up='#26a69a',      # Bright green for up candles
-            down='#ef5350',    # Bright red for down candles
-            edge={'up': '#26a69a', 'down': '#ef5350'},
-            wick={'up': '#26a69a', 'down': '#ef5350'},
-            volume={'up': '#26a69a', 'down': '#ef5350'}
+            up='#26a69a',
+            down='#ef5350',
+            edge='inherit',
+            wick='inherit',
+            volume={'up': '#26a69a', 'down': '#ef5350'},
+            inherit=True
         )
 
-        # Create custom style
+        # Style matching reference dark theme
         s = mpf.make_mpf_style(
             base_mpf_style='charles',
             marketcolors=mc,
             gridstyle='dotted',
             gridcolor='#192734',
-            facecolor='#0B1217',
-            figcolor='#0B1217',
+            facecolor='#131722',
+            figcolor='#131722',
             rc={
-                'axes.labelcolor': '#A7B1B7',
-                'axes.edgecolor': '#192734',
-                'xtick.color': '#A7B1B7',
-                'ytick.color': '#A7B1B7'
+                'axes.labelcolor': '#787B86',
+                'axes.edgecolor': '#363C4E',
+                'xtick.color': '#787B86',
+                'ytick.color': '#787B86',
+                'grid.color': '#363C4E',
+                'grid.linestyle': ':'
             }
         )
 
-        # Create figure with more defined candlestick settings
+        # Create plot with adjusted parameters
         fig, axlist = mpf.plot(
             df,
             type='candle',
-            volume=True,
             style=s,
-            ylabel='Price (USD)',
-            ylabel_lower='Volume',
+            volume=True,
+            ylabel='',
+            ylabel_lower='',
             returnfig=True,
             figsize=(12, 7),
             panel_ratios=(3, 1),
-            tight_layout=False,
+            tight_layout=True,
             xrotation=0,
-            datetime_format='%m-%d %H:%M',
+            datetime_format='%d %H:%M',
             show_nontrading=True,
             volume_panel=1,
-            scale_width_adjustment=dict(candle=1.5, volume=0.8),  # Make candles wider
-            scale_padding=dict(left=0.1, right=0.1),
-            mav=(20,),  # Add a 20-period moving average
+            scale_width_adjustment=dict(candle=0.6, volume=0.8),  # Thicker candles
+            scale_padding=dict(left=0.2, right=0.2),
+            mav=(20,),
+            mavcolors=['#FF9800'],  # Orange moving average
+            update_width_config=dict(
+                candle_linewidth=1.0,
+                candle_width=0.8,
+                volume_width=0.8,
+                volume_linewidth=1.0
+            )
         )
 
-        # Get the main price axis
+        # Customize axes
         ax_main = axlist[0]
         ax_volume = axlist[2]
         
-        # Format axes
+        # Right-align price axis
         ax_main.yaxis.set_label_position('right')
         ax_main.yaxis.tick_right()
         ax_volume.yaxis.set_label_position('right')
         ax_volume.yaxis.tick_right()
 
-        # Add pair name in upper left corner
-        pair_name = f"{token_type.upper()}/{'SOL' if token_type == 'tetsuo' else 'USD'}"
+        # Add pair name and price
+        pair_name = f"{token_type.upper()}/SOL"
         ax_main.text(0.02, 0.98, pair_name,
                     transform=ax_main.transAxes,
                     color='white',
                     fontweight='bold',
-                    fontsize=12,
+                    fontsize=10,
                     verticalalignment='top')
 
-        # Get current price (last close price from DataFrame)
         current_price = df['Close'].iloc[-1]
-        
-        # Format price based on value
-        if current_price < 0.01:
-            price_text = f"${current_price:.6f}"
-        elif current_price < 1:
-            price_text = f"${current_price:.4f}"
-        else:
-            price_text = f"${current_price:.2f}"
-
-        # Add current price in upper right corner
+        price_text = f"${current_price:.4f}"
         ax_main.text(0.98, 0.98, price_text,
                     transform=ax_main.transAxes,
                     color='white',
                     fontweight='bold',
-                    fontsize=12,
+                    fontsize=10,
                     verticalalignment='top',
                     horizontalalignment='right')
-        
-        # Adjust layout
-        plt.subplots_adjust(left=0.05, right=0.95, top=0.95)
-        
-        # Save to file
+
+        # Save chart
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{settings.SCREENSHOT_DIR}/chart_{timestamp}.png"
         os.makedirs(settings.SCREENSHOT_DIR, exist_ok=True)
         
         fig.savefig(filename, 
-                   dpi=100, 
-                   bbox_inches='tight', 
-                   facecolor='#0B1217',
+                   dpi=100,
+                   bbox_inches='tight',
+                   facecolor='#131722',
                    edgecolor='none',
-                   pad_inches=0.5)
+                   pad_inches=0.2)
         plt.close(fig)
         
         return filename
