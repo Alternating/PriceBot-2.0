@@ -47,7 +47,7 @@ async def fetch_candle_data(token_type):
         price_trend[0] = start_price
         
         # Create price movements
-        volatility = 0.0125
+        volatility = 0.015
         for i in range(1, num_periods):
             # Random walk with drift towards current price
             change = np.random.normal(0, volatility)
