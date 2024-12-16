@@ -86,7 +86,7 @@ async def fetch_candle_data(token_type):
         df['High'] = df[['Open', 'High', 'Close']].max(axis=1)
         df['Low'] = df[['Open', 'Low', 'Close']].min(axis=1)
         
-        print(f"Created DataFrame with {len(df)} hourly candles over 96 hours")
+        print(f"Created DataFrame with {len(df)} hourly candles over 120 hours")
         return df
         
     except Exception as e:
