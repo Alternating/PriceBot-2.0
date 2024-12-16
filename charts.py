@@ -47,20 +47,18 @@ async def fetch_candle_data(token_type):
         price_trend[0] = start_price
         
         # Enhanced price movement generation
-        volatility = 0.02  # Increased for more pronounced movements
-        momentum = 0  # Add momentum factor
+        volatility = 0.01  # Reduced for more natural movements
+        momentum = 0
+        
         for i in range(1, num_periods):
-            # Random walk with momentum and mean reversion
             random_change = np.random.normal(0, volatility)
-            momentum = momentum * 0.95 + random_change * 0.5  # Momentum decay and update
+            momentum = momentum * 0.95 + random_change * 0.5
             trend_factor = 0.03 * (current_price - price_trend[i-1]) / current_price
             
-            # Combined price movement
             total_change = random_change + momentum + trend_factor
             price_trend[i] = price_trend[i-1] * (1 + total_change)
             
-            # Add occasional larger moves
-            if np.random.random() < 0.1:  # 10% chance of larger move
+            if np.random.random() < 0.1:
                 price_trend[i] *= (1 + np.random.normal(0, volatility * 2))
 
         # Ensure last price matches current price
@@ -73,24 +71,37 @@ async def fetch_candle_data(token_type):
         closes = np.roll(price_trend, -1)
         closes[-1] = current_price
         
-        # More pronounced highs and lows
-        high_low_range = 0.015  # Increased range for more visible candles
-        highs = np.maximum(opens, closes) * (1 + np.random.uniform(0, high_low_range, num_periods))
-        lows = np.minimum(opens, closes) * (1 - np.random.uniform(0, high_low_range, num_periods))
+        # Initialize highs and lows arrays
+        highs = np.zeros(num_periods)
+        lows = np.zeros(num_periods)
+        
+        # Generate more realistic highs and lows based on candle direction
+        high_low_range = 0.005  # Reduced for more realistic wicks
+        for i in range(num_periods):
+            is_upcandle = closes[i] > opens[i]
+            wick_range = high_low_range * (1 + np.random.uniform(-0.5, 0.5))
+            
+            if is_upcandle:
+                highs[i] = closes[i] * (1 + wick_range)
+                lows[i] = opens[i] * (1 - wick_range * 0.5)
+            else:
+                highs[i] = opens[i] * (1 + wick_range * 0.5)
+                lows[i] = closes[i] * (1 - wick_range)
         
         # Generate more realistic volume data
         base_volume = float(pair_data.get('volume', {}).get('h24', 0) or 0) / 24
         volume_volatility = 0.5
         volumes = np.random.lognormal(np.log(base_volume), volume_volatility, num_periods)
-        volumes = np.clip(volumes, base_volume * 0.2, base_volume * 3.0)  # Clip extreme values
+        volumes = np.clip(volumes, base_volume * 0.2, base_volume * 3.0)
         
-        # Create DataFrame
+        # Create DataFrame with volume color
         df = pd.DataFrame({
             'Open': opens,
             'High': highs,
             'Low': lows,
             'Close': closes,
-            'Volume': volumes
+            'Volume': volumes,
+            'VolumeColor': np.where(closes >= opens, 1, -1)  # 1 for green, -1 for red
         }, index=dates)
         
         return df
@@ -102,14 +113,16 @@ async def fetch_candle_data(token_type):
 async def generate_chart(df, token_type):
     """Generate chart using mplfinance with DexScreener-like styling"""
     try:
+        # Define colors for the chart
         mc = mpf.make_marketcolors(
-            up='#26a69a',      # Green
-            down='#ef5350',    # Red
-            edge='inherit',
-            wick='inherit',
+            up='#26a69a',      # Bright green for up candles
+            down='#ef5350',    # Bright red for down candles
+            edge={'up': '#26a69a', 'down': '#ef5350'},
+            wick={'up': '#26a69a', 'down': '#ef5350'},
             volume={'up': '#26a69a', 'down': '#ef5350'}
         )
 
+        # Create custom style
         s = mpf.make_mpf_style(
             base_mpf_style='charles',
             marketcolors=mc,
@@ -125,7 +138,7 @@ async def generate_chart(df, token_type):
             }
         )
 
-        # Create figure
+        # Create figure with more defined candlestick settings
         fig, axlist = mpf.plot(
             df,
             type='candle',
@@ -139,7 +152,11 @@ async def generate_chart(df, token_type):
             tight_layout=False,
             xrotation=0,
             datetime_format='%m-%d %H:%M',
-            show_nontrading=True
+            show_nontrading=True,
+            volume_panel=1,
+            scale_width_adjustment=dict(candle=1.5, volume=0.8),  # Make candles wider
+            scale_padding=dict(left=0.1, right=0.1),
+            mav=(20,),  # Add a 20-period moving average
         )
 
         # Get the main price axis
