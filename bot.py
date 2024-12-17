@@ -6,7 +6,7 @@ import asyncio
 import os
 from datetime import datetime
 import settings
-from chart_scraper import capture_chart
+from chart_scraper import capture_chart_async
 
 class PriceBot(commands.Bot):
     def __init__(self):
@@ -235,47 +235,46 @@ class PriceCommands(commands.Cog):
             print(f"Error in sol_price: {str(e)}")
             await ctx.send("❌ Error fetching SOL price data")
             
-@commands.command(name='chart')
-async def chart_command(self, ctx, token_type: str = None):
-    """Display price chart for TETSUO or SOL"""
-    if not token_type:
-        await ctx.send("❌ Please specify either 'tetsuo' or 'sol' after the command.")
-        return
-        
-    if not await self.check_cooldown(ctx, 'chart'):
-        return
-        
-    token_type = token_type.lower()
-    if token_type not in ['tetsuo', 'sol']:
-        await ctx.send("❌ Invalid token type. Please use either 'tetsuo' or 'sol'.")
-        return
-        
-    async with ctx.typing():
-        try:
-            status_msg = await ctx.send("📊 Generating chart, please wait...")
+    @commands.command(name='chart')
+    async def chart_command(self, ctx, token_type: str = None):
+        """Display price chart for TETSUO or SOL"""
+        if not token_type:
+            await ctx.send("❌ Please specify either 'tetsuo' or 'sol' after the command.")
+            return
             
-            from chart_scraper import capture_chart_async
-            chart_path = await capture_chart_async(token_type)
+        if not await self.check_cooldown(ctx, 'chart'):
+            return
             
-            if chart_path is None:
+        token_type = token_type.lower()
+        if token_type not in ['tetsuo', 'sol']:
+            await ctx.send("❌ Invalid token type. Please use either 'tetsuo' or 'sol'.")
+            return
+            
+        async with ctx.typing():
+            try:
+                status_msg = await ctx.send("📊 Generating chart, please wait...")
+                
+                chart_path = await capture_chart_async(token_type)
+                
+                if chart_path is None:
+                    await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
+                    return
+                
+                embed = discord.Embed(
+                    title=f"{'TETSUO' if token_type == 'tetsuo' else 'Solana'} Price Chart (1H)",
+                    color=0x00ff00,
+                    timestamp=datetime.now()
+                )
+                
+                file = discord.File(chart_path, filename="chart.png")
+                embed.set_image(url="attachment://chart.png")
+                
+                await ctx.send(file=file, embed=embed)
+                await status_msg.delete()
+                
+            except Exception as e:
                 await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-                return
-            
-            embed = discord.Embed(
-                title=f"{'TETSUO' if token_type == 'tetsuo' else 'Solana'} Price Chart (1H)",
-                color=0x00ff00,
-                timestamp=datetime.now()
-            )
-            
-            file = discord.File(chart_path, filename="chart.png")
-            embed.set_image(url="attachment://chart.png")
-            
-            await ctx.send(file=file, embed=embed)
-            await status_msg.delete()
-            
-        except Exception as e:
-            await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-            print(f"Error in chart command: {str(e)}")
+                print(f"Error in chart command: {str(e)}")
 
 def main():
     try:
