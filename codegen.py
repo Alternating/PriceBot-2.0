@@ -53,7 +53,7 @@ def run_codegen():
             page = context.new_page()
             
             print("\nNavigating to DexScreener...")
-            page.goto("https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6")
+            page.goto("https://dexscreener.com/osmosis/1960")
             
             # Wait for chart to load
             time.sleep(5)

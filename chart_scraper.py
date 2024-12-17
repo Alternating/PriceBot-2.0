@@ -20,6 +20,24 @@ class CloudflareSession:
             'upgrade-insecure-requests': '1'
         }
 
+async def wait_for_chart_elements(frame, token_type):
+    """Wait for specific chart elements based on token type"""
+    try:
+        if token_type == 'sol':
+            # Wait for the chart label to be visible
+            await frame.wait_for_selector("text='Chart for SOL/USDC'", timeout=10000)
+            # Wait for price axis
+            await frame.wait_for_selector(".price-axis > canvas", timeout=10000)
+            # Wait for main chart canvas
+            await frame.wait_for_selector("div:nth-child(2) > div:nth-child(2) > div > canvas", timeout=10000)
+        else:
+            # For TETSUO, wait for any chart canvas to be visible
+            await frame.wait_for_selector(".chart-widget canvas", timeout=10000)
+
+    except Exception as e:
+        print(f"Error waiting for chart elements: {str(e)}")
+        raise
+
 async def capture_chart_async(token_type: str = 'tetsuo'):
     """
     Capture chart for specified token using async Playwright
@@ -43,6 +61,7 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
     url = urls[token_type.lower()]
     
     async with async_playwright() as p:
+        browser = None
         try:
             print(f"\nStarting chart capture for {token_type.upper()}...")
             
@@ -61,17 +80,31 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             page = await context.new_page()
             
             print("\nAccessing page...")
-            response = await page.goto(url, wait_until='networkidle', timeout=30000)
-            print(f"Response status: {response.status}")
+            # Use shorter initial timeout for page load
+            await page.goto(url, wait_until='domcontentloaded', timeout=20000)
             
-            await page.wait_for_timeout(5000)
-            
-            iframe = await page.wait_for_selector("iframe[name^='tradingview_']")
+            # Wait for tradingview iframe with retry logic
+            iframe = None
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    iframe = await page.wait_for_selector("iframe[name^='tradingview_']", timeout=10000)
+                    break
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    print(f"Retry {attempt + 1}/{max_retries} waiting for iframe...")
+                    await page.reload()
+
             frame = await iframe.content_frame()
             
             print("Setting 1h timeframe...")
             await frame.get_by_role("radio", name="1 hour").click()
             
+            print("Waiting for chart elements...")
+            await wait_for_chart_elements(frame, token_type.lower())
+            
+            # Additional wait for chart to stabilize
             await page.wait_for_timeout(2000)
             
             print("Taking screenshot...")
@@ -79,6 +112,7 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             
             screenshot_path = f"screenshots/{token_type.lower()}_chart.png"
             
+            # Get chart widget and take screenshot
             chart_widget = frame.locator(".chart-widget").first
             await chart_widget.screenshot(path=screenshot_path)
             
@@ -88,7 +122,7 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             
         except Exception as e:
             print(f"Error during capture: {str(e)}")
-            if 'browser' in locals():
+            if browser:
                 await browser.close()
             return None
 
