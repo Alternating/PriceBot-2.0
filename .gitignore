@@ -2,3 +2,8 @@
 .claudeignore
 .claudesync
 .claudesync/*
+trace.zip
+browser_data
+browser_profile
+screenshots
+videos
