@@ -1,6 +1,6 @@
 from playwright.async_api import async_playwright
-import time
 import os
+import time
 
 class CloudflareSession:
     def __init__(self):
@@ -19,24 +19,6 @@ class CloudflareSession:
             'accept-language': 'en-US,en;q=0.9',
             'upgrade-insecure-requests': '1'
         }
-
-async def wait_for_chart_elements(frame, token_type):
-    """Wait for specific chart elements based on token type"""
-    try:
-        if token_type == 'sol':
-            # Wait for the chart label to be visible
-            await frame.wait_for_selector("text='Chart for SOL/USDC'", timeout=10000)
-            # Wait for price axis
-            await frame.wait_for_selector(".price-axis > canvas", timeout=10000)
-            # Wait for main chart canvas
-            await frame.wait_for_selector("div:nth-child(2) > div:nth-child(2) > div > canvas", timeout=10000)
-        else:
-            # For TETSUO, wait for any chart canvas to be visible
-            await frame.wait_for_selector(".chart-widget canvas", timeout=10000)
-
-    except Exception as e:
-        print(f"Error waiting for chart elements: {str(e)}")
-        raise
 
 async def capture_chart_async(token_type: str = 'tetsuo'):
     """
@@ -59,15 +41,20 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
         
     session = CloudflareSession()
     url = urls[token_type.lower()]
+    browser = None
     
     async with async_playwright() as p:
-        browser = None
         try:
             print(f"\nStarting chart capture for {token_type.upper()}...")
             
             browser = await p.chromium.launch(
                 headless=True,
-                args=['--disable-blink-features=AutomationControlled']
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage'
+                ]
             )
             
             context = await browser.new_context(
@@ -80,39 +67,41 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             page = await context.new_page()
             
             print("\nAccessing page...")
-            # Use shorter initial timeout for page load
-            await page.goto(url, wait_until='domcontentloaded', timeout=20000)
+            response = await page.goto(url, wait_until='networkidle', timeout=30000)
+            print(f"Initial page load status: {response.status}")
             
-            # Wait for tradingview iframe with retry logic
-            iframe = None
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    iframe = await page.wait_for_selector("iframe[name^='tradingview_']", timeout=10000)
-                    break
-                except Exception as e:
-                    if attempt == max_retries - 1:
-                        raise
-                    print(f"Retry {attempt + 1}/{max_retries} waiting for iframe...")
-                    await page.reload()
-
+            # Additional wait after page load
+            await page.wait_for_timeout(5000)
+            
+            print("Looking for TradingView iframe...")
+            iframe = await page.wait_for_selector("iframe[name^='tradingview_']", timeout=15000)
             frame = await iframe.content_frame()
+            
+            # Wait for chart elements based on token type
+            if token_type.lower() == 'sol':
+                print("Waiting for SOL chart elements...")
+                try:
+                    await frame.wait_for_selector("text='Chart for SOL/USDC'", timeout=10000)
+                    print("Chart label found")
+                    await frame.wait_for_selector(".price-axis > canvas", timeout=10000)
+                    print("Price axis found")
+                    await frame.wait_for_selector("div:nth-child(2) > div:nth-child(2) > div > canvas", timeout=10000)
+                    print("Chart canvas found")
+                except Exception as e:
+                    print(f"Error waiting for chart elements: {str(e)}")
+                    raise
             
             print("Setting 1h timeframe...")
             await frame.get_by_role("radio", name="1 hour").click()
             
-            print("Waiting for chart elements...")
-            await wait_for_chart_elements(frame, token_type.lower())
-            
-            # Additional wait for chart to stabilize
-            await page.wait_for_timeout(2000)
+            # Wait for chart to update after timeframe change
+            await page.wait_for_timeout(5000)
             
             print("Taking screenshot...")
             os.makedirs("screenshots", exist_ok=True)
-            
             screenshot_path = f"screenshots/{token_type.lower()}_chart.png"
             
-            # Get chart widget and take screenshot
+            # Get the chart widget and take screenshot
             chart_widget = frame.locator(".chart-widget").first
             await chart_widget.screenshot(path=screenshot_path)
             
@@ -132,4 +121,5 @@ def capture_chart(token_type: str = 'tetsuo'):
     return asyncio.run(capture_chart_async(token_type))
 
 if __name__ == "__main__":
-    capture_chart('tetsuo')
+    capture_chart('tetsuo')  # Will save as tetsuo_chart.png
+    # capture_chart('sol')   # Will save as sol_chart.png
