@@ -67,7 +67,16 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             page = await context.new_page()
             
             print("\nAccessing page...")
-            response = await page.goto(url, wait_until='networkidle', timeout=30000)
+            
+            # Different load strategy based on token type
+            if token_type.lower() == 'sol':
+                # More lenient load strategy for SOL
+                response = await page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                await page.wait_for_selector('.chakra-container', timeout=20000)
+            else:
+                # Keep existing strategy for TETSUO
+                response = await page.goto(url, wait_until='networkidle', timeout=30000)
+                
             print(f"Initial page load status: {response.status}")
             
             # Additional wait after page load
