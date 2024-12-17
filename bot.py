@@ -256,8 +256,8 @@ class PriceCommands(commands.Cog):
             
                 if token_type == 'sol':
                     # Use SOL-specific scraper
-                    from sol_chart_scraper import debug_sol_chart
-                    chart_path = debug_sol_chart(headless=True)
+                    from sol_chart_scraper import capture_sol_chart_async
+                    chart_path = await capture_sol_chart_async(headless=True)
                 else:
                     # Use original chart scraper for TETSUO
                     from chart_scraper import capture_chart_async
@@ -282,6 +282,7 @@ class PriceCommands(commands.Cog):
             except Exception as e:
                 await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
                 print(f"Error in chart command: {str(e)}")
+
 
 def main():
     try:
