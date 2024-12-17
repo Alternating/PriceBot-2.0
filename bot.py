@@ -6,7 +6,7 @@ import asyncio
 import os
 from datetime import datetime
 import settings
-import charts
+from chart_scraper import capture_chart
 
 class PriceBot(commands.Bot):
     def __init__(self):
@@ -14,7 +14,7 @@ class PriceBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix='!', intents=intents)
         
-# Initialize command cooldowns
+        # Initialize command cooldowns
         self.command_cooldowns = {}
         
     async def setup_hook(self):
@@ -29,7 +29,7 @@ class PriceBot(commands.Bot):
     async def update_price(self):
         """Update bot's nickname with current price"""
         try:
-# Fetch TETSUO price data
+            # Fetch TETSUO price data
             response = requests.get(settings.TETSUO['dex_api'])
             data = response.json()
             
@@ -38,11 +38,11 @@ class PriceBot(commands.Bot):
                 price = float(pair['priceUsd'])
                 price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
                 
-# Format nickname with arrow
+                # Format nickname with arrow
                 arrow = "↗" if price_change >= 0 else "↘"
                 new_name = f"{arrow} ${price:.4f}"
                 
-# Update bot's nickname in all guilds
+                # Update bot's nickname in all guilds
                 for guild in self.guilds:
                     try:
                         await guild.me.edit(nick=new_name)
@@ -50,7 +50,7 @@ class PriceBot(commands.Bot):
                     except discord.errors.Forbidden:
                         print(f'Missing permissions to change nickname in {guild.name}')
                 
-# Update bot's status based on price change
+                # Update bot's status based on price change
                 status = discord.Status.online if price_change >= 0 else discord.Status.dnd
                 activity = discord.CustomActivity(name=f"24hr| {price_change:+.2f}%")
                 await self.change_presence(status=status, activity=activity)
@@ -73,7 +73,7 @@ class PriceCommands(commands.Cog):
     
         if cooldown_key in self.bot.command_cooldowns:
             time_diff = (current_time - self.bot.command_cooldowns[cooldown_key]).total_seconds()
-        # Use different cooldown times for different commands
+            # Use different cooldown times for different commands
             cooldown = settings.CHART_COOLDOWN if command_type == 'chart' else settings.PRICE_COOLDOWN
             if time_diff < cooldown:
                 remaining = int(cooldown - time_diff)
@@ -82,8 +82,6 @@ class PriceCommands(commands.Cog):
             
         self.bot.command_cooldowns[cooldown_key] = current_time
         return True
-
-# command for price check tetsuo
 
     @commands.command(name='tetsuo')
     async def tetsuo_price(self, ctx):
@@ -161,8 +159,6 @@ class PriceCommands(commands.Cog):
             print(f"Error in tetsuo_price: {str(e)}")
             await ctx.send("❌ Error fetching price data")
     
-# command to display sol price data - displays in discord
-
     @commands.command(name='sol')
     async def sol_price(self, ctx):
         """Display current SOL price information"""
@@ -238,8 +234,6 @@ class PriceCommands(commands.Cog):
         except Exception as e:
             print(f"Error in sol_price: {str(e)}")
             await ctx.send("❌ Error fetching SOL price data")
-
-# chart commands            
             
     @commands.command(name='chart')
     async def chart_command(self, ctx, token_type: str = None):
@@ -261,8 +255,8 @@ class PriceCommands(commands.Cog):
                 # Send initial message
                 status_msg = await ctx.send("📊 Generating chart, please wait...")
                 
-                # Generate chart using charts module
-                chart_path = await charts.create_price_chart(token_type)
+                # Use chart_scraper to capture the chart
+                chart_path = capture_chart(token_type)
                 
                 if chart_path is None:
                     await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
@@ -282,62 +276,12 @@ class PriceCommands(commands.Cog):
                 # Send embed with chart
                 await ctx.send(file=file, embed=embed)
                 
-                # Delete status message and clean up chart file
+                # Delete status message
                 await status_msg.delete()
-                os.remove(chart_path)
                 
             except Exception as e:
                 await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
                 print(f"Error in chart command: {str(e)}")
-
-    async def handle_chart_command(self, ctx, token_type: str):
-        """Helper method to handle chart generation"""
-        if not await self.check_cooldown(ctx, 'chart'):
-            return
-            
-        async with ctx.typing():
-            try:
-                # Send initial message
-                status_msg = await ctx.send("📊 Generating chart, please wait...")
-                
-                # Generate chart
-                chart_path = await charts.create_price_chart(token_type)
-                
-                if chart_path is None:
-                    await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-                    return
-                
-                # Create embed
-                embed = discord.Embed(
-                    title=f"{'TETSUO' if token_type == 'tetsuo' else 'Solana'} Price Chart (1H)",
-                    color=0x00ff00,
-                    timestamp=datetime.now()
-                )
-                
-                # Add chart to embed
-                file = discord.File(chart_path, filename="chart.png")
-                embed.set_image(url="attachment://chart.png")
-                
-                # Send embed with chart
-                await ctx.send(file=file, embed=embed)
-                
-                # Cleanup
-                await status_msg.delete()
-                os.remove(chart_path)
-                
-            except Exception as e:
-                await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-                print(f"Error generating chart: {str(e)}")
-
-    @commands.command(name='chart_tetsuo')
-    async def chart_tetsuo(self, ctx):
-        """Display TETSUO price chart"""
-        await self.handle_chart_command(ctx, 'tetsuo')
-
-    @commands.command(name='chart_sol')
-    async def chart_sol(self, ctx):
-        """Display SOL price chart"""
-        await self.handle_chart_command(ctx, 'sol')
 
 def main():
     try:
