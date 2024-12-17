@@ -1,4 +1,4 @@
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 import time
 import os
 
@@ -20,9 +20,9 @@ class CloudflareSession:
             'upgrade-insecure-requests': '1'
         }
 
-def capture_chart(token_type: str = 'tetsuo'):
+async def capture_chart_async(token_type: str = 'tetsuo'):
     """
-    Capture chart for specified token
+    Capture chart for specified token using async Playwright
     
     Args:
         token_type (str): Token to capture chart for ('tetsuo' or 'sol')
@@ -30,10 +30,9 @@ def capture_chart(token_type: str = 'tetsuo'):
     Returns:
         str: Path to saved screenshot or None if error
     """
-    # URLs for different tokens
     urls = {
         'tetsuo': "https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6",
-        'sol': "https://dexscreener.com/osmosis/1960"  # Using your SOL pair from bot.py
+        'sol': "https://dexscreener.com/osmosis/1960"
     }
     
     if token_type.lower() not in urls:
@@ -43,61 +42,60 @@ def capture_chart(token_type: str = 'tetsuo'):
     session = CloudflareSession()
     url = urls[token_type.lower()]
     
-    with sync_playwright() as p:
+    async with async_playwright() as p:
         try:
             print(f"\nStarting chart capture for {token_type.upper()}...")
             
-            browser = p.chromium.launch(
+            browser = await p.chromium.launch(
                 headless=True,
                 args=['--disable-blink-features=AutomationControlled']
             )
             
-            context = browser.new_context(
+            context = await browser.new_context(
                 extra_http_headers=session.headers,
                 viewport={'width': 1920, 'height': 1080},
                 screen={'width': 1920, 'height': 1080}
             )
             
-            context.add_cookies(session.cf_cookies)
-            page = context.new_page()
+            await context.add_cookies(session.cf_cookies)
+            page = await context.new_page()
             
             print("\nAccessing page...")
-            response = page.goto(url, wait_until='networkidle', timeout=30000)
+            response = await page.goto(url, wait_until='networkidle', timeout=30000)
             print(f"Response status: {response.status}")
             
-            # Wait for initial page load
-            time.sleep(5)
+            await page.wait_for_timeout(5000)
             
-            # Find iframe with dynamic name
-            iframe = page.wait_for_selector("iframe[name^='tradingview_']")
-            frame = iframe.content_frame()
+            iframe = await page.wait_for_selector("iframe[name^='tradingview_']")
+            frame = await iframe.content_frame()
             
             print("Setting 1h timeframe...")
-            frame.get_by_role("radio", name="1 hour").click()
+            await frame.get_by_role("radio", name="1 hour").click()
             
-            # Wait for chart update
-            time.sleep(2)
+            await page.wait_for_timeout(2000)
             
             print("Taking screenshot...")
             os.makedirs("screenshots", exist_ok=True)
             
-            # Use static filename based on token
             screenshot_path = f"screenshots/{token_type.lower()}_chart.png"
             
-            # Get the chart widget container and take screenshot
             chart_widget = frame.locator(".chart-widget").first
-            chart_widget.screenshot(path=screenshot_path)
+            await chart_widget.screenshot(path=screenshot_path)
             
             print(f"✅ Screenshot saved to: {screenshot_path}")
+            await browser.close()
             return screenshot_path
             
         except Exception as e:
             print(f"Error during capture: {str(e)}")
+            if 'browser' in locals():
+                await browser.close()
             return None
-        finally:
-            browser.close()
+
+def capture_chart(token_type: str = 'tetsuo'):
+    """Synchronous wrapper for capture_chart_async"""
+    import asyncio
+    return asyncio.run(capture_chart_async(token_type))
 
 if __name__ == "__main__":
-    # Example usage
-    capture_chart('tetsuo')  # Will save as tetsuo_chart.png
-    # capture_chart('sol')   # Will save as sol_chart.png
+    capture_chart('tetsuo')
