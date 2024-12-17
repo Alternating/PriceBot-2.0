@@ -20,7 +20,7 @@ class CloudflareSession:
             'upgrade-insecure-requests': '1'
         }
 
-def debug_sol_chart():
+def debug_sol_chart(headless=True):
     """Debug function to capture SOL chart with visual feedback"""
     session = CloudflareSession()
     url = "https://dexscreener.com/osmosis/1960"
@@ -29,9 +29,8 @@ def debug_sol_chart():
         try:
             print("\nStarting SOL chart debug capture...")
             
-            # Launch browser in non-headless mode
             browser = p.chromium.launch(
-                headless=False,
+                headless=headless,
                 args=['--disable-blink-features=AutomationControlled']
             )
             
@@ -48,7 +47,6 @@ def debug_sol_chart():
             response = page.goto(url, wait_until='domcontentloaded', timeout=30000)
             print(f"Initial page load status: {response.status}")
             
-            # Debug output for iframe detection
             print("\nLooking for TradingView iframe...")
             iframe = page.wait_for_selector("iframe[name^='tradingview_']", timeout=10000)
             frame_name = iframe.get_attribute('name')
@@ -57,7 +55,6 @@ def debug_sol_chart():
             frame = iframe.content_frame()
             
             print("\nWaiting for chart elements to load...")
-            # Wait for various chart elements with debug output
             try:
                 chart_label = frame.wait_for_selector("text='Chart for SOL/USDC'", timeout=10000)
                 print("✅ Chart label found")
@@ -79,33 +76,32 @@ def debug_sol_chart():
             print("\nSetting 1h timeframe...")
             frame.get_by_role("radio", name="1 hour").click()
             
-            # Wait for chart to stabilize
             print("\nWaiting for chart to stabilize...")
             page.wait_for_timeout(5000)
             
             print("\nTaking screenshot...")
             os.makedirs("screenshots", exist_ok=True)
-            screenshot_path = "screenshots/sol_chart_debug.png"
+            screenshot_path = "screenshots/sol_chart.png"
             
-            # Take screenshot of chart widget
             chart_widget = frame.locator(".chart-widget").first
             chart_widget.screenshot(path=screenshot_path)
             
             print(f"\n✅ Screenshot saved to: {screenshot_path}")
             
-            # Keep browser open for 10 seconds to inspect
-            print("\nKeeping browser open for 10 seconds...")
-            time.sleep(10)
+            if not headless:
+                print("\nKeeping browser open for 10 seconds...")
+                time.sleep(10)
             
             browser.close()
             return screenshot_path
             
         except Exception as e:
             print(f"\n❌ Error during capture: {str(e)}")
-            input("\nPress Enter to close the browser...")
+            if not headless:
+                input("\nPress Enter to close the browser...")
             if 'browser' in locals():
                 browser.close()
             return None
 
 if __name__ == "__main__":
-    debug_sol_chart()
+    debug_sol_chart(headless=False)  # Run in visible mode when run directly
