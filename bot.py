@@ -109,7 +109,7 @@ class PriceCommands(commands.Cog):
 
                 embed = discord.Embed(
                     title="TETSUO Price Information",
-                    url="https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6"
+                    url="https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6",
                     color=color,
                     timestamp=datetime.now()
                 )
