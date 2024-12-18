@@ -172,75 +172,60 @@ class PriceCommands(commands.Cog):
             sol = yf.Ticker("SOL-USD")
             info = sol.info
             
-            # Debug print
-            print("Available data fields:", info.keys())
+            # Use the correct field names from the API
+            price = info.get('regularMarketDayHigh') or info.get('dayHigh')  # Current price
+            prev_close = info.get('previousClose')
+            volume_24h = info.get('volume24Hr')
+            market_cap = info.get('marketCap')
             
-            try:
-                price = info.get('regularMarketPrice') or info.get('currentPrice')
-                prev_close = info.get('regularMarketPreviousClose') or info.get('previousClose')
-                volume_24h = info.get('volume24Hr') or info.get('regularMarketVolume') or info.get('volume')
-                market_cap = info.get('marketCap') or info.get('marketCapitalization')
-                
-                if not all([price, prev_close, volume_24h, market_cap]):
-                    print("Missing data - received values:")
-                    print(f"price: {price}")
-                    print(f"prev_close: {prev_close}")
-                    print(f"volume_24h: {volume_24h}")
-                    print(f"market_cap: {market_cap}")
-                    raise ValueError("Missing required data fields")
-                
-                # Calculate 24h change percentage
-                price_change = ((price - prev_close) / prev_close) * 100
-                
-                # Create embed
-                color = 0x00ff00 if price_change >= 0 else 0xff0000
-                arrow = "↑" if price_change >= 0 else "↓"
-                
-                embed = discord.Embed(
-                    title="Solana Price Information",
-                    color=color,
-                    timestamp=datetime.now()
-                )
-                
-                # First row: Price and 24h Change
-                embed.add_field(
-                    name="Current Price",
-                    value=f"{arrow} ${price:.2f}",
-                    inline=True
-                )
-                
-                embed.add_field(
-                    name="24h Change",
-                    value=f"{price_change:+.2f}%",
-                    inline=True
-                )
-                
-                # Add empty field to force next row
-                embed.add_field(name="\u200b", value="\u200b", inline=True)
-                
-                # Second row: Market Cap and Volume
-                market_cap_formatted = f"${market_cap/1_000_000_000:.2f}B"
-                embed.add_field(
-                    name="Market Cap",
-                    value=market_cap_formatted,
-                    inline=True
-                )
+            # Calculate 24h change percentage
+            price_change = ((price - prev_close) / prev_close) * 100
+            
+            # Create embed
+            color = 0x00ff00 if price_change >= 0 else 0xff0000
+            arrow = "↑" if price_change >= 0 else "↓"
+            
+            embed = discord.Embed(
+                title="Solana Price Information",
+                color=color,
+                timestamp=datetime.now()
+            )
+            
+            # First row: Price and 24h Change
+            embed.add_field(
+                name="Current Price",
+                value=f"{arrow} ${price:.2f}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="24h Change",
+                value=f"{price_change:+.2f}%",
+                inline=True
+            )
+            
+            # Add empty field to force next row
+            embed.add_field(name="\u200b", value="\u200b", inline=True)
+            
+            # Second row: Market Cap and Volume
+            market_cap_formatted = f"${market_cap/1_000_000_000:.2f}B"
+            embed.add_field(
+                name="Market Cap",
+                value=market_cap_formatted,
+                inline=True
+            )
 
-                volume_formatted = f"${volume_24h:,.0f}"
-                embed.add_field(
-                    name="24h Volume",
-                    value=volume_formatted,
-                    inline=True
-                )
-                
-                # Add empty field to maintain grid
-                embed.add_field(name="\u200b", value="\u200b", inline=True)
-                
-                await ctx.send(embed=embed)
-                
-            except (KeyError, TypeError) as e:
-                print(f"Error accessing data fields: {str(e)}")
-                raise
+            volume_formatted = f"${volume_24h:,.0f}"
+            embed.add_field(
+                name="24h Volume",
+                value=volume_formatted,
+                inline=True
+            )
+            
+            # Add empty field to maintain grid
+            embed.add_field(name="\u200b", value="\u200b", inline=True)
+            
+            await ctx.send(embed=embed)
                 
         except Exception as e:
             print(f"Error in sol_price: {str(e)}")
