@@ -164,73 +164,65 @@ class PriceCommands(commands.Cog):
         """Display current SOL price information"""
         if not await self.check_cooldown(ctx, 'sol'):
             return
-            
+        
         try:
-            response = requests.get(settings.SOL['dex_api'])
+            response = requests.get('https://query1.finance.yahoo.com/v8/finance/chart/sol-USD')
             data = response.json()
+        
+            if data and 'chart' in data and 'result' in data['chart'] and len(data['chart']['result']) > 0:
+                result = data['chart']['result'][0]['meta']
+                price = float(result['regularMarketPrice'])
+                prev_close = float(result['chartPreviousClose'])
+                volume_24h = float(result['regularMarketVolume'])
             
-            if data and 'pair' in data:
-                pair = data['pair']
-                price = float(pair['priceUsd'])
-                price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
-                market_cap = float(pair['fdv']) if 'fdv' in pair else None
-                volume_24h = float(pair['volume']['h24']) if 'volume' in pair and 'h24' in pair['volume'] else None
-                
-                # Create embed
+            # Calculate 24h change percentage
+                price_change = ((price - prev_close) / prev_close) * 100
+            
+            # Create embed
                 color = 0x00ff00 if price_change >= 0 else 0xff0000
                 arrow = "↑" if price_change >= 0 else "↓"
-                
+            
                 embed = discord.Embed(
                     title="Solana Price Information",
                     color=color,
                     timestamp=datetime.now()
                 )
-                
-                # First row: Price and 24h Change
+            
+            # First row: Price and 24h Change
                 embed.add_field(
                     name="Current Price",
                     value=f"{arrow} ${price:.2f}",
                     inline=True
                 )
-                
+            
                 embed.add_field(
                     name="24h Change",
                     value=f"{price_change:+.2f}%",
                     inline=True
                 )
-                
-                # Add empty field to force next row
+            
+            # Add empty field to force next row
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
-                
-                # Second row: Market Cap and Volume
-                if market_cap:
-                    market_cap_formatted = f"${market_cap/1_000_000:.2f}M"
-                    embed.add_field(
-                        name="Market Cap",
-                        value=market_cap_formatted,
-                        inline=True
-                    )
-                else:
-                    embed.add_field(name="Market Cap", value="N/A", inline=True)
+            
+            # Second row: Market Cap and Volume
+            # Note: Yahoo doesn't provide market cap in this endpoint
+                embed.add_field(name="Market Cap", value="N/A", inline=True)
 
-                if volume_24h:
-                    volume_formatted = f"${volume_24h:,.0f}"
-                    embed.add_field(
-                        name="24h Volume",
-                        value=volume_formatted,
-                        inline=True
-                    )
-                else:
-                    embed.add_field(name="24h Volume", value="N/A", inline=True)
-                
-                # Add empty field to maintain grid
+                volume_formatted = f"${volume_24h:,.0f}"
+                embed.add_field(
+                    name="24h Volume",
+                    value=volume_formatted,
+                    inline=True
+                )
+            
+            # Add empty field to maintain grid
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
-                
+            
                 await ctx.send(embed=embed)
-                
+            
             else:
                 await ctx.send("❌ Unable to fetch SOL price data")
-                
+            
         except Exception as e:
             print(f"Error in sol_price: {str(e)}")
             await ctx.send("❌ Error fetching SOL price data")
