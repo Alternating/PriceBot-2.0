@@ -106,8 +106,10 @@ class PriceCommands(commands.Cog):
                 color = 0x00ff00 if price_change >= 0 else 0xff0000
                 arrow = "↑" if price_change >= 0 else "↓"
                 
+
                 embed = discord.Embed(
                     title="TETSUO Price Information",
+                    url="https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6"
                     color=color,
                     timestamp=datetime.now()
                 )
@@ -188,7 +190,7 @@ class PriceCommands(commands.Cog):
             # Create embed with hyperlinked title
             embed = discord.Embed(
                 title="Solana Price Information",
-                url="https://dexscreener.com/solana/SOL",
+                url="https://dexscreener.com/osmosis/1960",
                 color=color,
                 timestamp=datetime.now()
             )
