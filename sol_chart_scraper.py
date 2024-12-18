@@ -47,19 +47,19 @@ async def capture_sol_chart_async(headless=True):
                 chart_label = await frame.wait_for_selector("text='Chart for SOL/USDC'", timeout=10000)
                 print("✅ Chart label found")
             except Exception as e:
-                print(f"❌ Chart label not found: {str(e)}")
+                print(f"❌ Check Session cookie | Chart label not found: {str(e)}")
                 
             try:
                 price_axis = await frame.wait_for_selector(".price-axis > canvas", timeout=10000)
                 print("✅ Price axis found")
             except Exception as e:
-                print(f"❌ Price axis not found: {str(e)}")
+                print(f"❌ Check Session cookie | Price axis not found: {str(e)}")
                 
             try:
                 chart_canvas = await frame.wait_for_selector("div:nth-child(2) > div:nth-child(2) > div > canvas", timeout=10000)
                 print("✅ Chart canvas found")
             except Exception as e:
-                print(f"❌ Chart canvas not found: {str(e)}")
+                print(f"❌ Check Session cookie | Chart canvas not found: {str(e)}")
             
             print("\nSetting 1h timeframe...")
             await frame.get_by_role("radio", name="1 hour").click()
@@ -84,7 +84,7 @@ async def capture_sol_chart_async(headless=True):
             return screenshot_path
             
         except Exception as e:
-            print(f"\n❌ Error during capture: {str(e)}")
+            print(f"\n❌ Check Session cookie | Error during capture: {str(e)}")
             if not headless:
                 input("\nPress Enter to close the browser...")
             if 'browser' in locals():

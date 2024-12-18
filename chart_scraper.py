@@ -7,7 +7,7 @@ class CloudflareSession:
     def __init__(self):
         self.cf_cookies = settings.CF_COOKIES
         self.headers = settings.CF_HEADERS
-        
+
 async def capture_chart_async(token_type: str = 'tetsuo'):
     """
     Capture chart for specified token using async Playwright
@@ -85,7 +85,7 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
                     await frame.wait_for_selector("div:nth-child(2) > div:nth-child(2) > div > canvas", timeout=10000)
                     print("Chart canvas found")
                 except Exception as e:
-                    print(f"Error waiting for chart elements: {str(e)}")
+                    print(f"Check Session cookie | Error waiting for chart elements: {str(e)}")
                     raise
             
             print("Setting 1h timeframe...")
@@ -107,7 +107,7 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             return screenshot_path
             
         except Exception as e:
-            print(f"Error during capture: {str(e)}")
+            print(f"Check Session cookie | Error during capture: {str(e)}")
             if browser:
                 await browser.close()
             return None

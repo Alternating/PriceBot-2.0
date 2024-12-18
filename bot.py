@@ -9,6 +9,7 @@ from datetime import datetime
 import settings
 from chart_scraper import capture_chart_async
 import yfinance as yf
+from dotenv import load_dotenv
 
 class PriceBot(commands.Bot):
     def __init__(self):
@@ -283,6 +284,8 @@ class PriceCommands(commands.Cog):
                 print(f"Error in chart command: {str(e)}")
 
 def main():
+    load_dotenv()
+    settings.BOT_TOKEN = os.getenv('DISCORD_TOKEN')
     try:
         bot = PriceBot()
         bot.run(settings.BOT_TOKEN)
