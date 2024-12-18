@@ -161,119 +161,78 @@ class PriceCommands(commands.Cog):
     
     @commands.command(name='sol')
     async def sol_price(self, ctx):
-        """Display current SOL price information"""
-        if not await self.check_cooldown(ctx, 'sol'):
-            return
-        
-        try:
-            response = requests.get('https://query1.finance.yahoo.com/v8/finance/chart/sol-USD')
-            data = response.json()
-        
-            if data and 'chart' in data and 'result' in data['chart'] and len(data['chart']['result']) > 0:
-                result = data['chart']['result'][0]['meta']
-                price = float(result['regularMarketPrice'])
-                prev_close = float(result['chartPreviousClose'])
-                volume_24h = float(result['regularMarketVolume'])
-            
-            # Calculate 24h change percentage
-                price_change = ((price - prev_close) / prev_close) * 100
-            
-            # Create embed
-                color = 0x00ff00 if price_change >= 0 else 0xff0000
-                arrow = "↑" if price_change >= 0 else "↓"
-            
-                embed = discord.Embed(
-                    title="Solana Price Information",
-                    color=color,
-                    timestamp=datetime.now()
-                )
-            
-            # First row: Price and 24h Change
-                embed.add_field(
-                    name="Current Price",
-                    value=f"{arrow} ${price:.2f}",
-                    inline=True
-                )
-            
-                embed.add_field(
-                    name="24h Change",
-                    value=f"{price_change:+.2f}%",
-                    inline=True
-                )
-            
-            # Add empty field to force next row
-                embed.add_field(name="\u200b", value="\u200b", inline=True)
-            
-            # Second row: Market Cap and Volume
-            # Note: Yahoo doesn't provide market cap in this endpoint
-                embed.add_field(name="Market Cap", value="N/A", inline=True)
+       """Display current SOL price information"""
+       if not await self.check_cooldown(ctx, 'sol'):
+           return
+           
+       try:
+           # Add required headers to mimic a browser request
+           headers = {
+               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+               'Accept': 'application/json',
+               'Accept-Language': 'en-US,en;q=0.9'
+           }
+           
+           response = requests.get('https://query1.finance.yahoo.com/v8/finance/chart/sol-USD', headers=headers)
+           data = response.json()
+           
+           if data and 'chart' in data and 'result' in data['chart'] and len(data['chart']['result']) > 0:
+               result = data['chart']['result'][0]['meta']
+               price = float(result['regularMarketPrice'])
+               prev_close = float(result['chartPreviousClose'])
+               volume_24h = float(result['regularMarketVolume'])
+               
+               # Calculate 24h change percentage
+               price_change = ((price - prev_close) / prev_close) * 100
+               
+               # Create embed
+               color = 0x00ff00 if price_change >= 0 else 0xff0000
+               arrow = "↑" if price_change >= 0 else "↓"
+               
+               embed = discord.Embed(
+                   title="Solana Price Information",
+                   color=color,
+                   timestamp=datetime.now()
+               )
+               
+               # First row: Price and 24h Change
+               embed.add_field(
+                   name="Current Price",
+                   value=f"{arrow} ${price:.2f}",
+                   inline=True
+               )
+               
+               embed.add_field(
+                   name="24h Change",
+                   value=f"{price_change:+.2f}%",
+                   inline=True
+               )
+               
+               # Add empty field to force next row
+               embed.add_field(name="\u200b", value="\u200b", inline=True)
+               
+               # Second row: Market Cap and Volume
+               # Note: Yahoo doesn't provide market cap in this endpoint
+               embed.add_field(name="Market Cap", value="N/A", inline=True)
 
-                volume_formatted = f"${volume_24h:,.0f}"
-                embed.add_field(
-                    name="24h Volume",
-                    value=volume_formatted,
-                    inline=True
-                )
-            
-            # Add empty field to maintain grid
-                embed.add_field(name="\u200b", value="\u200b", inline=True)
-            
-                await ctx.send(embed=embed)
-            
-            else:
-                await ctx.send("❌ Unable to fetch SOL price data")
-            
-        except Exception as e:
-            print(f"Error in sol_price: {str(e)}")
-            await ctx.send("❌ Error fetching SOL price data")
-            
-    @commands.command(name='chart')
-    async def chart_command(self, ctx, token_type: str = None):
-        """Display price chart for TETSUO or SOL"""
-        if not token_type:
-            await ctx.send("❌ Please specify either 'tetsuo' or 'sol' after the command.")
-            return
-        
-        if not await self.check_cooldown(ctx, 'chart'):
-            return
-        
-        token_type = token_type.lower()
-        if token_type not in ['tetsuo', 'sol']:
-            await ctx.send("❌ Invalid token type. Please use either 'tetsuo' or 'sol'.")
-            return
-        
-        async with ctx.typing():
-            try:
-                status_msg = await ctx.send("📊 Generating chart, please wait...")
-            
-                if token_type == 'sol':
-                    # Use SOL-specific scraper
-                    from sol_chart_scraper import capture_sol_chart_async
-                    chart_path = await capture_sol_chart_async(headless=True)
-                else:
-                    # Use original chart scraper for TETSUO
-                    from chart_scraper import capture_chart_async
-                    chart_path = await capture_chart_async('tetsuo')
-            
-                if chart_path is None:
-                    await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-                    return
-            
-                embed = discord.Embed(
-                    title=f"{'TETSUO' if token_type == 'tetsuo' else 'Solana'} Price Chart (1H)",
-                    color=0x00ff00,
-                    timestamp=datetime.now()
-                )
-            
-                file = discord.File(chart_path, filename="chart.png")
-                embed.set_image(url="attachment://chart.png")
-            
-                await ctx.send(file=file, embed=embed)
-                await status_msg.delete()
-            
-            except Exception as e:
-                await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
-                print(f"Error in chart command: {str(e)}")
+               volume_formatted = f"${volume_24h:,.0f}"
+               embed.add_field(
+                   name="24h Volume",
+                   value=volume_formatted,
+                   inline=True
+               )
+               
+               # Add empty field to maintain grid
+               embed.add_field(name="\u200b", value="\u200b", inline=True)
+               
+               await ctx.send(embed=embed)
+               
+           else:
+               await ctx.send("❌ Unable to fetch SOL price data")
+               
+       except Exception as e:
+           print(f"Error in sol_price: {str(e)}")
+           await ctx.send("❌ Error fetching SOL price data")
 
 
 def main():
