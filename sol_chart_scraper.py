@@ -7,7 +7,7 @@ class CloudflareSession:
         self.cf_cookies = [
             {
                 "name": "cf_clearance",
-                "value": "0mBg5GJTKnBffTGYbk3IsZ.XYsk5f4bPTW2m7M73A44-1734386419-1.2.1.1-gfMuswlWrgsh0D.WAX0jH00y316mimWSZ4EnnXNSq0LWI5WuFNHdhlnV1mSzLr1Cxytd5oebnC5MWc.C2FLgnEdnAzzIsm5VIPFHDsTCbMj4PdA473ph7HfK3.2rGSOM2_gmQwSrxQa4PLF8odRWPbswmv1g6yFfNDNCcF98DjU8Bn1Fri4gkqu18q4OEqXPd55353leKq5NxCHZmuS_8ZPPEQakV_jp5WJ_klmTNT4PCRXDuxskyQipcE6A8tyU5cisUo3g4vPyPoKmukDSqk.JN25sFo31Do5BIgTZzXWFnTc8L59HOPRxOLwPkocwyqlNJGSw56EpYT6R9AGBC4JbaNyXqMRwTPAEl5X5pU_dqrONDo3OqL.0PY3kCJQ1XERvYf6N4WofgPlapRCeV8G5mZts64qun3CgbWdbQRcu6uvwSGY6deij0jM.jsx_",
+                "value": "JbNKrIkR5zRQGreyJVfPu9QvM3bculv4hhCHc70mC8w-1734501689-1.2.1.1-5.6JmgP5bgco8WUBXDH9NVtc3ZqY62uWw_E.Mu26iIykWpBn1szBBsw6OzA82.zwii52yvmelL4cyd_sFJNMYGFN9onTGcwhPt39ngFdlCzV5jjFDYCLEb0SYd5Lgb8QEOg0Cp9f01Wl_jqPwowYrTsI6UGes.blI2MWV5_jV9iD02lKElI6HniTd9u3tJRf3ntDS.lG5LN.hiA0wR7lKrrKnUd9.LUlwKrl4Bt6vzqTQecoCpnQvJgrSVmUUnI.1xPnsNNwma6yqK3HJ5rYTJ0dpkp3BZOwADUGLNllr.3xeSh.Wo3p6Y9AGk_aRPUfrlaGdB8eye1aSN3r6dJnHQh2HJclPDLSNx018qBQvFbeRiDdRFalKRxv_iQcPkc155bZTcOdgErZFSOj6d5BWj2Xi7UHX3fravfAQvzFsu.1vOeT7p9Z7JuTh_Mq07ea",
                 "domain": ".dexscreener.com",
                 "path": "/"
             }
