@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 import settings
 from chart_scraper import capture_chart_async
+import yfinance as yf
 
 class PriceBot(commands.Bot):
     def __init__(self):
@@ -166,8 +167,6 @@ class PriceCommands(commands.Cog):
             return
             
         try:
-            import yfinance as yf
-            
             # Get SOL data
             sol = yf.Ticker("SOL-USD")
             info = sol.info
