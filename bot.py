@@ -20,6 +20,18 @@ class PriceBot(commands.Bot):
         # Initialize command cooldowns
         self.command_cooldowns = {}
         
+        # Add commands
+        self.add_commands()
+        
+    def add_commands(self):
+        # Add all commands
+        self.add_command(self.tetsuo_price)
+        self.add_command(self.sol_price)
+        self.add_command(self.chart_command)
+        self.add_command(self.help_command)
+        self.add_command(self.admin_help)
+        self.add_command(self.update_cookie)
+        
     async def setup_hook(self):
         self.update_price.start()
 
