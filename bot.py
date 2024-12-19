@@ -282,27 +282,7 @@ class PriceCommands(commands.Cog):
             except Exception as e:
                 await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
                 print(f"Error in chart command: {str(e)}")
-    @commands.command(name='help')
-    async def help_command(self, ctx):
-        """Display all available commands"""
-        embed = discord.Embed(
-            title="Bot Commands",
-            color=0x00ff00,
-            description="Here are all the available commands:"
-        )
-        
-        commands_info = {
-            "!tetsuo": "Show current TETSUO price information (60s cooldown)",
-            "!sol": "Show current Solana price information (60s cooldown)",
-            "!chart tetsuo": "Show TETSUO price chart (15s cooldown)",
-            "!chart sol": "Show Solana price chart (15s cooldown)",
-            "!help": "Show this help message"
-        }
-        
-        for cmd, desc in commands_info.items():
-            embed.add_field(name=cmd, value=desc, inline=False)
-            
-        await ctx.send(embed=embed)
+
 
     @commands.command(name='adminhelp')
     async def admin_help(self, ctx):
