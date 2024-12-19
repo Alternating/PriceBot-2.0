@@ -45,6 +45,12 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             print("\nNavigating to page...")
             await page.goto(url, wait_until='networkidle', timeout=30000)
             
+            # Enable dark mode
+            print("\nEnabling dark mode...")
+            await page.locator(".UserDropdown_user-avatar-wrapper__YEFUG > .sc-65e7f566-0 > use").click()
+            await page.get_by_role("tooltip", name="Log In Sign Up Language").locator("span div").click()
+            await page.locator(".HeaderV3_main-header__xTs_o").click()
+            
             print("\nLooking for TradingView iframe...")
             iframe = await page.wait_for_selector("iframe[name^='tradingview_']", timeout=15000)
             frame = await iframe.content_frame()
