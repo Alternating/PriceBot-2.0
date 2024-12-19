@@ -3,15 +3,10 @@ import time
 import os
 import settings
 
-class CloudflareSession:
-    def __init__(self):
-        self.cf_cookies = settings.CF_COOKIES
-        self.headers = settings.CF_HEADERS
-
 async def capture_sol_chart_async(headless=True):
-    """Async function to capture SOL chart"""
-    session = CloudflareSession()
-    url = "https://dexscreener.com/osmosis/1960"
+    """Async function to capture SOL chart from CMC"""
+    url = "https://coinmarketcap.com/currencies/solana/"
+    browser = None
     
     async with async_playwright() as p:
         try:
@@ -23,48 +18,48 @@ async def capture_sol_chart_async(headless=True):
             )
             
             context = await browser.new_context(
-                extra_http_headers=session.headers,
                 viewport={'width': 1920, 'height': 1080},
-                screen={'width': 1920, 'height': 1080}
+                screen={'width': 1920, 'height': 1080},
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             )
             
-            await context.add_cookies(session.cf_cookies)
             page = await context.new_page()
             
-            print("\nNavigating to page...")
-            response = await page.goto(url, wait_until='domcontentloaded', timeout=30000)
-            print(f"Initial page load status: {response.status}")
+            print("\nNavigating to CMC...")
+            await page.goto(url, wait_until='networkidle', timeout=30000)
+            
+            # Enable dark mode and handle initial page setup
+            print("\nSetting up page preferences...")
+            await page.locator(".UserDropdown_user-avatar-wrapper__YEFUG > .sc-65e7f566-0 > use").click()
+            await page.get_by_role("tooltip", name="Log In Sign Up Language").locator("span").nth(2).click()
+            
+            # Switch to TradingView chart if needed
+            try:
+                await page.get_by_role("button", name="TradingView").click()
+            except:
+                print("Already on TradingView chart or button not found")
+                
+            # Handle cookie consent if it appears
+            try:
+                await page.get_by_role("button", name="Accept Cookies and Continue").click()
+            except:
+                print("No cookie consent needed")
             
             print("\nLooking for TradingView iframe...")
-            iframe = await page.wait_for_selector("iframe[name^='tradingview_']", timeout=10000)
-            frame_name = await iframe.get_attribute('name')
-            print(f"Found iframe with name: {frame_name}")
-            
+            iframe = await page.wait_for_selector("iframe[name^='tradingview_']", timeout=15000)
             frame = await iframe.content_frame()
             
-            print("\nWaiting for chart elements to load...")
-            try:
-                chart_label = await frame.wait_for_selector("text='Chart for SOL/USDC'", timeout=10000)
-                print("✅ Chart label found")
-            except Exception as e:
-                print(f"❌ Check Session cookie | Chart label not found: {str(e)}")
-                
-            try:
-                price_axis = await frame.wait_for_selector(".price-axis > canvas", timeout=10000)
-                print("✅ Price axis found")
-            except Exception as e:
-                print(f"❌ Check Session cookie | Price axis not found: {str(e)}")
-                
-            try:
-                chart_canvas = await frame.wait_for_selector("div:nth-child(2) > div:nth-child(2) > div > canvas", timeout=10000)
-                print("✅ Chart canvas found")
-            except Exception as e:
-                print(f"❌ Check Session cookie | Chart canvas not found: {str(e)}")
+            # Wait for chart elements
+            print("\nWaiting for chart elements...")
+            await frame.get_by_label("Chart for SOL/USD, 1 hour").wait_for(timeout=10000)
+            await frame.locator(".price-axis > canvas:nth-child(2)").wait_for(timeout=10000)
+            await frame.locator("div:nth-child(2) > div:nth-child(2) > div > canvas:nth-child(2)").wait_for(timeout=10000)
             
+            # Set 1h timeframe
             print("\nSetting 1h timeframe...")
             await frame.get_by_role("radio", name="1 hour").click()
             
-            print("\nWaiting for chart to stabilize...")
+            # Wait for chart to stabilize
             await page.wait_for_timeout(5000)
             
             print("\nTaking screenshot...")
@@ -84,10 +79,8 @@ async def capture_sol_chart_async(headless=True):
             return screenshot_path
             
         except Exception as e:
-            print(f"\n❌ Check Session cookie | Error during capture: {str(e)}")
-            if not headless:
-                input("\nPress Enter to close the browser...")
-            if 'browser' in locals():
+            print(f"\n❌ Error during capture: {str(e)}")
+            if browser:
                 await browser.close()
             return None
 

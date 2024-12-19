@@ -4,19 +4,19 @@ import time
 def run_codegen():
     with sync_playwright() as p:
         try:
-            print("\nStarting codegen session...")
+            print("\nStarting codegen session for SOL page...")
             
             browser = p.chromium.launch(
                 headless=False,
                 args=[
-                    '--window-size=1920,1080',
+                    '--window-size=1680,720',
                     '--disable-blink-features=AutomationControlled'
                 ]
             )
             
             context = browser.new_context(
-                viewport={'width': 1920, 'height': 1080},
-                screen={'width': 1920, 'height': 1080},
+                viewport={'width': 1680, 'height': 720},
+                screen={'width': 1680, 'height': 720},
                 record_video_dir="videos/",
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             )
@@ -30,17 +30,18 @@ def run_codegen():
             
             page = context.new_page()
             
-            print("\nNavigating to CMC DEXScan...")
-            page.goto("https://coinmarketcap.com/dexscan/solana/2KB3i5uLKhUcjUwq3poxHpuGGqBWYwtTk5eG9E5WnLG6/")
+            print("\nNavigating to CMC SOL page...")
+            page.goto("https://coinmarketcap.com/currencies/solana/")
             
             # Wait for chart to load
             time.sleep(5)
             
             print("\nCodegen ready!")
             print("1. Wait for chart to fully load")
-            print("2. Look for TradingView widget or native chart")
-            print("3. Inspect elements you want to capture")
-            print("4. Press Ctrl+C in terminal when done\n")
+            print("2. Enable dark mode")
+            print("3. Look for TradingView widget")
+            print("4. Set timeframe to 1H")
+            print("5. Press Ctrl+C in terminal when done\n")
             
             page.pause()  # This will pause for codegen recording
             
