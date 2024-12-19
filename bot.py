@@ -285,13 +285,14 @@ class PriceCommands(commands.Cog):
                 print(f"Error in chart command: {str(e)}")
 
 
-    @commands.command(name='commands')
+    @commands.command(name='commands')  # Changed from 'help' to 'commands' to match the !commands syntax
     async def help_command(self, ctx):
         """Display all available commands"""
         embed = discord.Embed(
             title="Bot Commands",
+            url="https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6",
             color=0x00ff00,
-            description="Here are all the available commands:"
+            timestamp=datetime.now()
         )
         
         commands_info = {
