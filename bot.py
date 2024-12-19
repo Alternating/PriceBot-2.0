@@ -235,6 +235,7 @@ class PriceCommands(commands.Cog):
         except Exception as e:
             print(f"Error in sol_price: {str(e)}")
             await ctx.send("❌ Error fetching SOL price data")
+
     @commands.command(name='chart')
     async def chart_command(self, ctx, token_type: str = None):
         """Display price chart for TETSUO or SOL"""
@@ -346,6 +347,53 @@ class PriceCommands(commands.Cog):
         except Exception as e:
             print(f"Error updating cookie: {str(e)}")
             await ctx.send("❌ Failed to update session cookie.")
+
+    @commands.command(name='help')
+    async def help_command(self, ctx):
+        """Display all available commands"""
+        try:
+            # Create embed with matching style
+            embed = discord.Embed(
+                title="Available Commands",
+                url="https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6",
+                color=0x00ff00,
+                timestamp=datetime.now()
+            )
+
+            # Price Commands
+            embed.add_field(
+                name="Price Commands",
+                value="```\n!tetsuo - Show TETSUO price information\n!sol - Show Solana price information```",
+                inline=False
+            )
+
+            # Chart Commands
+            embed.add_field(
+                name="Chart Commands",
+                value="```\n!chart tetsuo - Show TETSUO price chart\n!chart sol - Show Solana price chart```",
+                inline=False
+            )
+
+            # Utility Commands
+            embed.add_field(
+                name="Utility Commands",
+                value="```\n!help - Show this help message```",
+                inline=False
+            )
+
+            # Add cooldown information
+            embed.add_field(
+                name="Cooldowns",
+                value="```\nPrice commands: 60 second cooldown\nChart commands: 15 second cooldown```",
+                inline=False
+            )
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            print(f"Error in help command: {str(e)}")
+            await ctx.send("❌ Error displaying help information")
+
 def main():
     load_dotenv()
     settings.BOT_TOKEN = os.getenv('DISCORD_TOKEN')
