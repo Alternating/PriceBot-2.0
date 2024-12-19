@@ -65,9 +65,14 @@ class PriceBot(commands.Bot):
     async def before_update_price(self):
         await self.wait_until_ready()
 
-class PriceCommands(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+class PriceBot(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        super().__init__(command_prefix='!', intents=intents, help_command=None)  # Disable default help
+        
+        # Initialize command cooldowns
+        self.command_cooldowns = {}
 
     async def check_cooldown(self, ctx, command_type='price'):
         """Check if command is on cooldown"""
