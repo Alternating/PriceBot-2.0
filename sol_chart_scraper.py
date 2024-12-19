@@ -26,22 +26,35 @@ async def capture_sol_chart_async(headless=True):
             page = await context.new_page()
             
             print("\nNavigating to CMC...")
-            await page.goto(url, wait_until='networkidle', timeout=30000)
+            await page.goto(url, wait_until='domcontentloaded', timeout=30000)
+            
+            # Wait for the header to be visible (indicates basic page load)
+            await page.wait_for_selector(".HeaderV3_main-header__xTs_o", timeout=10000)
             
             # Enable dark mode and handle initial page setup
             print("\nSetting up page preferences...")
-            await page.locator(".UserDropdown_user-avatar-wrapper__YEFUG > .sc-65e7f566-0 > use").click()
+            
+            # Wait for and click the user menu button
+            user_menu = page.locator(".UserDropdown_user-avatar-wrapper__YEFUG > .sc-65e7f566-0 > use")
+            await user_menu.wait_for(state="visible", timeout=10000)
+            await user_menu.click()
+            
+            # Set dark mode
             await page.get_by_role("tooltip", name="Log In Sign Up Language").locator("span").nth(2).click()
             
             # Switch to TradingView chart if needed
             try:
-                await page.get_by_role("button", name="TradingView").click()
+                tradingview_button = page.get_by_role("button", name="TradingView")
+                await tradingview_button.wait_for(state="visible", timeout=5000)
+                await tradingview_button.click()
             except:
                 print("Already on TradingView chart or button not found")
                 
             # Handle cookie consent if it appears
             try:
-                await page.get_by_role("button", name="Accept Cookies and Continue").click()
+                cookie_button = page.get_by_role("button", name="Accept Cookies and Continue")
+                await cookie_button.wait_for(state="visible", timeout=5000)
+                await cookie_button.click()
             except:
                 print("No cookie consent needed")
             
