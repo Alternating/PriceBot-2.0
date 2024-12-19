@@ -15,13 +15,12 @@ class PriceBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
-        super().__init__(command_prefix='!', intents=intents)
+        super().__init__(command_prefix='!', intents=intents, help_command=None)  # Disable default help
         
         # Initialize command cooldowns
         self.command_cooldowns = {}
         
     async def setup_hook(self):
-        await self.add_cog(PriceCommands(self))
         self.update_price.start()
 
     async def on_ready(self):
@@ -65,22 +64,13 @@ class PriceBot(commands.Bot):
     async def before_update_price(self):
         await self.wait_until_ready()
 
-class PriceBot(commands.Bot):
-    def __init__(self):
-        intents = discord.Intents.default()
-        intents.message_content = True
-        super().__init__(command_prefix='!', intents=intents, help_command=None)  # Disable default help
-        
-        # Initialize command cooldowns
-        self.command_cooldowns = {}
-
     async def check_cooldown(self, ctx, command_type='price'):
         """Check if command is on cooldown"""
         current_time = datetime.now()
         cooldown_key = f"{ctx.channel.id}_{command_type}"
     
-        if cooldown_key in self.bot.command_cooldowns:
-            time_diff = (current_time - self.bot.command_cooldowns[cooldown_key]).total_seconds()
+        if cooldown_key in self.command_cooldowns:
+            time_diff = (current_time - self.command_cooldowns[cooldown_key]).total_seconds()
             # Use different cooldown times for different commands
             cooldown = settings.CHART_COOLDOWN if command_type == 'chart' else settings.PRICE_COOLDOWN
             if time_diff < cooldown:
@@ -88,7 +78,7 @@ class PriceBot(commands.Bot):
                 await ctx.send(f'⏳ This command is on cooldown. Please wait {remaining} seconds.')
                 return False
             
-        self.bot.command_cooldowns[cooldown_key] = current_time
+        self.command_cooldowns[cooldown_key] = current_time
         return True
 
     @commands.command(name='tetsuo')
@@ -112,7 +102,6 @@ class PriceBot(commands.Bot):
                 color = 0x00ff00 if price_change >= 0 else 0xff0000
                 arrow = "↑" if price_change >= 0 else "↓"
                 
-
                 embed = discord.Embed(
                     title="TETSUO Price Information",
                     url="https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6",
@@ -289,6 +278,51 @@ class PriceBot(commands.Bot):
                 await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
                 print(f"Error in chart command: {str(e)}")
 
+    @commands.command(name='help')
+    async def help_command(self, ctx):
+        """Display all available commands"""
+        try:
+            # Create embed with matching style
+            embed = discord.Embed(
+                title="Available Commands",
+                url="https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6",
+                color=0x00ff00,
+                timestamp=datetime.now()
+            )
+
+            # Price Commands
+            embed.add_field(
+                name="Price Commands",
+                value="```\n!tetsuo - Show TETSUO price information\n!sol - Show Solana price information```",
+                inline=False
+            )
+
+            # Chart Commands
+            embed.add_field(
+                name="Chart Commands",
+                value="```\n!chart tetsuo - Show TETSUO price chart\n!chart sol - Show Solana price chart```",
+                inline=False
+            )
+
+            # Utility Commands
+            embed.add_field(
+                name="Utility Commands",
+                value="```\n!help - Show this help message```",
+                inline=False
+            )
+
+            # Add cooldown information
+            embed.add_field(
+                name="Cooldowns",
+                value="```\nPrice commands: 60 second cooldown\nChart commands: 15 second cooldown```",
+                inline=False
+            )
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            print(f"Error in help command: {str(e)}")
+            await ctx.send("❌ Error displaying help information")
 
     @commands.command(name='adminhelp')
     async def admin_help(self, ctx):
@@ -352,52 +386,6 @@ class PriceBot(commands.Bot):
         except Exception as e:
             print(f"Error updating cookie: {str(e)}")
             await ctx.send("❌ Failed to update session cookie.")
-
-    @commands.command(name='help')
-    async def help_command(self, ctx):
-        """Display all available commands"""
-        try:
-            # Create embed with matching style
-            embed = discord.Embed(
-                title="Available Commands",
-                url="https://dexscreener.com/solana/2kb3i5ulkhucjuwq3poxhpuggqbwywttk5eg9e5wnlg6",
-                color=0x00ff00,
-                timestamp=datetime.now()
-            )
-
-            # Price Commands
-            embed.add_field(
-                name="Price Commands",
-                value="```\n!tetsuo - Show TETSUO price information\n!sol - Show Solana price information```",
-                inline=False
-            )
-
-            # Chart Commands
-            embed.add_field(
-                name="Chart Commands",
-                value="```\n!chart tetsuo - Show TETSUO price chart\n!chart sol - Show Solana price chart```",
-                inline=False
-            )
-
-            # Utility Commands
-            embed.add_field(
-                name="Utility Commands",
-                value="```\n!help - Show this help message```",
-                inline=False
-            )
-
-            # Add cooldown information
-            embed.add_field(
-                name="Cooldowns",
-                value="```\nPrice commands: 60 second cooldown\nChart commands: 15 second cooldown```",
-                inline=False
-            )
-
-            await ctx.send(embed=embed)
-
-        except Exception as e:
-            print(f"Error in help command: {str(e)}")
-            await ctx.send("❌ Error displaying help information")
 
 def main():
     load_dotenv()
