@@ -285,8 +285,8 @@ class PriceCommands(commands.Cog):
                 print(f"Error in chart command: {str(e)}")
 
 
-    @commands.command(name='commands')  # Changed from 'help' to 'commands' to match the !commands syntax
-    async def help_command(self, ctx):
+    @commands.command(name='commands')  # Handle !commands
+    async def commands_command(self, ctx):
         """Display all available commands"""
         embed = discord.Embed(
             title="Bot Commands",
@@ -305,8 +305,13 @@ class PriceCommands(commands.Cog):
         
         for cmd, desc in commands_info.items():
             embed.add_field(name=cmd, value=desc, inline=False)
-            
+                
         await ctx.send(embed=embed)
+
+    @commands.command(name='help')  # Handle !help - identical to !commands
+    async def help_command(self, ctx):
+        """Display all available commands"""
+        await self.commands_command(ctx)  # Reuse the commands command
 
     @commands.command(name='adminhelp')
     async def admin_help(self, ctx):
