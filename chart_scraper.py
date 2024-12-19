@@ -15,7 +15,7 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
     """
     urls = {
         'tetsuo': "https://coinmarketcap.com/dexscan/solana/2KB3i5uLKhUcjUwq3poxHpuGGqBWYwtTk5eG9E5WnLG6/",
-        'sol': "https://coinmarketcap.com/currencies/solana/",  # Regular CMC page for SOL
+        'sol': "https://coinmarketcap.com/currencies/solana/",
     }
     
     if token_type.lower() not in urls:
@@ -31,9 +31,7 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             
             browser = await p.chromium.launch(
                 headless=True,
-                args=[
-                    '--disable-blink-features=AutomationControlled',
-                ]
+                args=['--disable-blink-features=AutomationControlled']
             )
             
             context = await browser.new_context(
@@ -51,14 +49,15 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             iframe = await page.wait_for_selector("iframe[name^='tradingview_']", timeout=15000)
             frame = await iframe.content_frame()
             
+            # Wait for chart elements using exact selectors from codegen
+            print("\nWaiting for chart elements...")
+            await frame.get_by_label(f"Chart for {'TETSUO/USD' if token_type == 'tetsuo' else 'SOL/USD'}, 1 hour").wait_for(timeout=10000)
+            await frame.locator(".price-axis > canvas:nth-child(2)").wait_for(timeout=10000)
+            await frame.locator("div:nth-child(2) > div:nth-child(2) > div > canvas:nth-child(2)").wait_for(timeout=10000)
+            
             # Set 1h timeframe by clicking the button
             print("Setting 1h timeframe...")
             await frame.get_by_role("radio", name="1 hour").click()
-            
-            # Wait for chart elements to be visible
-            await frame.get_by_label(f"Chart for {'TETSUO/USD' if token_type == 'tetsuo' else 'SOL/USD'}, 1 hour").wait_for(timeout=10000)
-            await frame.locator(".price-axis > canvas").wait_for(timeout=10000)
-            await frame.locator("div:nth-child(2) > div:nth-child(2) > div > canvas").wait_for(timeout=10000)
             
             # Additional wait for chart update
             await page.wait_for_timeout(5000)
@@ -87,4 +86,4 @@ def capture_chart(token_type: str = 'tetsuo'):
     return asyncio.run(capture_chart_async(token_type))
 
 if __name__ == "__main__":
-    capture_chart('tetsuo')  # Will save as tetsuo_chart.png
+    capture_chart('tetsuo')
