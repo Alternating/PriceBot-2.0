@@ -19,7 +19,7 @@
 * create .env file - edit the file -> DISCORD_TOKEN= 'YOUR_BOT_TOKEN_HERE'  <- put that in the .env file and put your token in there
 * Invite your bot with proper permissions https://discord.com/oauth2/authorize?client_id=BOTIDGOESHERE&scope=bot&permissions=572023139200064  <-- if you don't like this permission you can control it with roles
 * Create the role owner - If you don't like this role you can edit help.py and change the name of the role to whatever you like
-* This bot utilizes a hijacked session cookie to bypass human checks for charts - know how to get your cf_clearance cookie from chrome/firefox/opera/etc
+* This bot utilizes CMC charts using playwright to take a screen shot of the website
 
 # Update package list
 sudo apt update
