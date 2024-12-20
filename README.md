@@ -14,7 +14,7 @@
 * !help
 
 # Bot ADMIN COMMANDS (MUST HAVE THE PROPER ROLE "owner = default role")
-* !cookie - example of command shortened cookie - !cookie K7S9piT39y0J5C0yjDYrQxb6KMnWhJaZwMUllzwruInzGN._zSeahtTAtghKyc 
+* TBD for future options
 
 # Things you must do
 * create .env file - edit the file -> DISCORD_TOKEN= 'YOUR_BOT_TOKEN_HERE'  <- put that in the .env file and put your token in there
