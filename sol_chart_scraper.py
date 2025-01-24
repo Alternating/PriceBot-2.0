@@ -94,10 +94,10 @@ async def capture_sol_chart_async(headless=True, timeframe: str = '1h'):
             return None
 
 # Sync wrapper for running directly
-def debug_sol_chart(headless=False):
+def debug_sol_chart(headless=False, timeframe='1h'):
     """Synchronous wrapper for debugging"""
     import asyncio
-    return asyncio.run(capture_sol_chart_async(headless=headless))
+    return asyncio.run(capture_sol_chart_async(headless=headless, timeframe=timeframe))
 
 if __name__ == "__main__":
     debug_sol_chart(headless=False)  # Run in visible mode when run directly
