@@ -3,9 +3,9 @@ import time
 import os
 import settings
 
-async def capture_sol_chart_async(headless=True, timeframe: str = '1h'):
+async def capture_sol_chart_async(headless=False, timeframe: str = '1h'):
     """Async function to capture SOL chart from CMC"""
-    url = "https://coinmarketcap.com/currencies/solana/"
+    url = "https://coinmarketcap.com/dexscan/osmosis/1960/"
     browser = None
     
     async with async_playwright() as p:
@@ -32,8 +32,16 @@ async def capture_sol_chart_async(headless=True, timeframe: str = '1h'):
             await page.wait_for_selector(".HeaderV3_main-header__xTs_o", timeout=10000)
             
             # Enable dark mode and handle initial page setup
-            print("\nSetting up page preferences...")
-            
+            print("\nEnabling dark mode...")
+            await page.locator(".UserDropdown_user-avatar-wrapper__YEFUG > .sc-65e7f566-0").click()
+            await page.get_by_role("tooltip", name="Log In Sign Up Language").locator("span").click()
+
+            # Handle cookie consent
+            try:
+                await page.get_by_role("button", name="Accept Cookies and Continue").click()
+            except:
+             print("No cookie consent needed")
+             
             # Wait for and click the user menu button
             await page.locator(".UserDropdown_user-avatar-wrapper__YEFUG > .sc-65e7f566-0").click()
             await page.get_by_role("tooltip", name="Log In Sign Up Language").locator("span").nth(2).click()
