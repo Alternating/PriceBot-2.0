@@ -278,7 +278,7 @@ class PriceCommands(commands.Cog):
                     return
             
                 embed = discord.Embed(
-                    title=f"{'TETSUO' if token_type == 'tetsuo' else 'Solana'} Price Chart (1H)",
+                    title=f"{'TETSUO' if token_type == 'tetsuo' else 'Solana'} Price Chart ({timeframe})",
                     color=0x00ff00,
                     timestamp=datetime.now()
                 )
