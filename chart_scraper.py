@@ -3,7 +3,7 @@ import os
 import time
 import settings
 
-async def capture_chart_async(token_type: str = 'tetsuo'):
+async def capture_chart_async(token_type: str = 'tetsuo', timeframe: str = '1h'):
     """
     Capture chart for specified token using async Playwright
     

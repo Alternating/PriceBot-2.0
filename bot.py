@@ -244,13 +244,15 @@ class PriceCommands(commands.Cog):
             await ctx.send("❌ Error fetching SOL price data")
 
     @commands.command(name='chart')
-    async def chart_command(self, ctx, token_type: str = None):
-        """Display price chart for TETSUO or SOL"""
+    async def chart_command(self, ctx, token_type: str = None, timeframe: str = "1h"):
+        """Display price chart for TETSUO or SOL with specified timeframe"""
         if not token_type:
             await ctx.send("❌ Please specify either 'tetsuo' or 'sol' after the command.")
             return
-        
-        if not await self.check_cooldown(ctx, 'chart'):
+            
+        valid_timeframes = ["15m", "30m", "1h", "4h", "1d"]
+        if timeframe not in valid_timeframes:
+            await ctx.send(f"❌ Invalid timeframe. Please use one of: {', '.join(valid_timeframes)}")
             return
         
         token_type = token_type.lower()
@@ -269,7 +271,7 @@ class PriceCommands(commands.Cog):
                 else:
                     # Use original chart scraper for TETSUO
                     from chart_scraper import capture_chart_async
-                    chart_path = await capture_chart_async('tetsuo')
+                    chart_path = await capture_chart_async('tetsuo', timeframe) if token_type == 'tetsuo' else await capture_sol_chart_async(timeframe=timeframe)
             
                 if chart_path is None:
                     await status_msg.edit(content="❌ Failed to generate chart. Please try again later.")
