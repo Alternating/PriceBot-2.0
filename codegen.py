@@ -31,7 +31,7 @@ def run_codegen():
             page = context.new_page()
             
             print("\nNavigating to CMC SOL page...")
-            page.goto("https://coinmarketcap.com/dexscan/solana/2KB3i5uLKhUcjUwq3poxHpuGGqBWYwtTk5eG9E5WnLG6/")
+            page.goto("https://coinmarketcap.com/currencies/solana/")
             
             # Wait for chart to load
             time.sleep(5)

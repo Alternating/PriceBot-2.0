@@ -3,7 +3,7 @@ import time
 import os
 import settings
 
-async def capture_sol_chart_async(headless=True):
+async def capture_sol_chart_async(headless=True, timeframe: str = '1h'):
     """Async function to capture SOL chart from CMC"""
     url = "https://coinmarketcap.com/currencies/solana/"
     browser = None
@@ -53,9 +53,21 @@ async def capture_sol_chart_async(headless=True):
             await frame.locator("div:nth-child(2) > div:nth-child(2) > div > canvas:nth-child(2)").wait_for(timeout=10000)
             
             # Set 1h timeframe
-            print("\nSetting 1h timeframe...")
-            await frame.get_by_role("radio", name="hour").click()
+            #print("\nSetting 1h timeframe...")
+            #await frame.get_by_role("radio", name="hour").click()
             
+            # Set timeframe
+            timeframe_map = {
+                "15m": "15 minutes",
+                "30m": "30 minutes",
+                "1h": "1 hour",
+                "4h": "4 hours",
+                "1d": "1 day"
+            }
+            print(f"\nSetting {timeframe} timeframe...")
+            await frame.get_by_role("button", name="Time Interval").click()
+            await frame.get_by_text(timeframe_map[timeframe]).click()
+
             # Wait for chart to stabilize
             await page.wait_for_timeout(5000)
             
