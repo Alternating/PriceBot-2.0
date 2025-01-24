@@ -1,6 +1,7 @@
 # PriceBot-2.0
 * Price bot for discord made in python.
 * Bot updates price every 5mins (300seconds)
+* This bot utilizes CMC charts using playwright to take a screen shot of the website
 * Bot shows price on nickname, if you adjust the speed of the updates be aware of discord rules as they may ban your bot if you are too aggressive.
 * Status Green or Red shows the direction of the coin based on the 24 hour % of the coin
 * An up or down arrow is included to show direction based on the percentage
@@ -13,13 +14,13 @@
 * !help
 
 # Bot ADMIN COMMANDS (MUST HAVE THE PROPER ROLE "owner = default role")
-* !cookie - example of command shortened cookie - !cookie K7S9piT39y0J5C0yjDYrQxb6KMnWhJaZwMUllzwruInzGN._zSeahtTAtghKyc 
+* TBD for future options
 
 # Things you must do
 * create .env file - edit the file -> DISCORD_TOKEN= 'YOUR_BOT_TOKEN_HERE'  <- put that in the .env file and put your token in there
 * Invite your bot with proper permissions https://discord.com/oauth2/authorize?client_id=BOTIDGOESHERE&scope=bot&permissions=572023139200064  <-- if you don't like this permission you can control it with roles
-* Create the role owner - If you don't like this role you can edit help.py and change the name of the role to whatever you like
-* This bot utilizes a hijacked session cookie to bypass human checks for charts - know how to get your cf_clearance cookie from chrome/firefox/opera/etc
+* Create the role owner - If you don't like this role you can edit help.py and change the name of the role to whatever you like - the permissions sets the bot up for future commands that require deleting or updating older messages
+
 
 # Update package list
 sudo apt update

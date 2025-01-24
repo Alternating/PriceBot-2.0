@@ -41,12 +41,17 @@ class PriceBot(commands.Bot):
             if data and 'pairs' in data and len(data['pairs']) > 0:
                 pair = data['pairs'][0]
                 price = float(pair['priceUsd'])
+                price = price * 1000
                 price_change = float(pair['priceChange']['h24']) if 'priceChange' in pair else 0
                 
                 # Format nickname with arrow
                 arrow = "↗" if price_change >= 0 else "↘"
-                new_name = f"{arrow} ${price:.4f}"
-                
+                new_name = f"EngageXD {price:.1f}M {arrow}"
+
+		#arrow = "↗" if price_change >= 0 else "↘"
+	#price = price * 1000
+	#new_name = f"EngageXD {price:.1f}M {arrow}"
+
                 # Update bot's nickname in all guilds
                 for guild in self.guilds:
                     try:
