@@ -15,7 +15,7 @@ async def capture_chart_async(token_type: str = 'tetsuo', timeframe: str = '1h')
     """
     urls = {
         'tetsuo': "https://coinmarketcap.com/dexscan/solana/2KB3i5uLKhUcjUwq3poxHpuGGqBWYwtTk5eG9E5WnLG6/",
-        'sol': "https://coinmarketcap.com/currencies/solana/",
+        'sol': "https://coinmarketcap.com/dexscan/osmosis/1960/",
     }
     
     if token_type.lower() not in urls:

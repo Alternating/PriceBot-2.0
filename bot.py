@@ -267,7 +267,7 @@ class PriceCommands(commands.Cog):
                 if token_type == 'sol':
                     # Use SOL-specific scraper
                     from sol_chart_scraper import capture_sol_chart_async
-                    chart_path = await capture_sol_chart_async(headless=True)
+                    chart_path = await capture_sol_chart_async(headless=True, timeframe=timeframe)
                 else:
                     # Use original chart scraper for TETSUO
                     from chart_scraper import capture_chart_async
