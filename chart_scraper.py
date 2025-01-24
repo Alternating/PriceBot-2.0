@@ -62,9 +62,21 @@ async def capture_chart_async(token_type: str = 'tetsuo'):
             await frame.locator("div:nth-child(2) > div:nth-child(2) > div > canvas:nth-child(2)").wait_for(timeout=10000)
             
             # Set 1h timeframe by clicking the button
-            print("Setting 1h timeframe...")
-            await frame.get_by_role("radio", name="1 hour").click()
+            # print("Setting 1h timeframe...")
+            # await frame.get_by_role("radio", name="1 hour").click()
             
+            # Set timeframe
+            timeframe_map = {
+                "15m": "15 minutes",
+                "30m": "30 minutes",
+                "1h": "1 hour",
+                "4h": "4 hours",
+                "1d": "1 day"
+            }
+            print(f"Setting {timeframe} timeframe...")
+            await frame.get_by_role("button", name="Time Interval").click()
+            await frame.get_by_text(timeframe_map[timeframe]).click()
+
             # Additional wait for chart update
             await page.wait_for_timeout(5000)
             

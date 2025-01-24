@@ -20,8 +20,8 @@ class HelpCommands(commands.Cog):
         commands_info = {
             "!tetsuo": "Show current TETSUO price information (60s cooldown)",
             "!sol": "Show current Solana price information (60s cooldown)",
-            "!chart tetsuo": "Show TETSUO price chart (15s cooldown)",
-            "!chart sol": "Show Solana price chart (15s cooldown)",
+            "!chart tetsuo [timeframe]": "Show TETSUO price chart (15s cooldown). Timeframes: 15m, 30m, 1h, 4h, 1d",
+            "!chart sol [timeframe]": "Show Solana price chart (15s cooldown). Timeframes: 15m, 30m, 1h, 4h, 1d",
             "!help": "Show this help message"
         }
         
